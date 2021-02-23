@@ -348,3 +348,6 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+# ignore .hex files, those are compiled assembly or control rom files and get generated
+*.hex
