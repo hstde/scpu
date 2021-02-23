@@ -167,10 +167,6 @@ namespace Sasm.Tokenizing
                     position++;
                     token = new Token(TokenType.RParen, line, start, 1);
                     break;
-                case LabelTerminator:
-                    position++;
-                    token = new Token(TokenType.LabelTerminator, line, start, 1);
-                    break;
                 case ArgumentSeparator:
                     position++;
                     token = new Token(Separator, line, start, 1);
@@ -217,13 +213,13 @@ namespace Sasm.Tokenizing
             bool isPossibleCommand = line[position] is CommandPrefix;
             position++;
             while (position < line.Length
-                    && (IsAlphaNum(line[position])))
+                    && (IsIdent(line[position])))
             {
                 position++;
             }
             int length = position - start;
 
-            var type = Name;
+            var type = Identifier;
 
             string tokenText = line.Substring(start, length);
             string tokenTextLower = tokenText.ToLower();
@@ -234,6 +230,11 @@ namespace Sasm.Tokenizing
                 type = Mnemonic;
             else if (registers.Contains(tokenTextLower))
                 type = Register;
+            else if(position < line.Length && line[position] is LabelTerminator)
+            {
+                position++;
+                type = LabelDefinition;
+            }
 
             token = new Token(type, tokenText, start);
             return true;

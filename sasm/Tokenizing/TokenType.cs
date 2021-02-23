@@ -4,7 +4,7 @@ namespace Sasm.Tokenizing
     {
             Unknown,
             Mnemonic,
-            LabelTerminator,
+            LabelDefinition,
             String,
             Char,
             DecNumber,
@@ -17,7 +17,7 @@ namespace Sasm.Tokenizing
             LParen,
             RParen,
             Operator,
-            Name,
+            Identifier,
             Separator,
     }
 }
