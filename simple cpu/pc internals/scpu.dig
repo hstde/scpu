@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<circuit>
+  <version>1</version>
+  <attributes/>
+  <visualElements>
+    <visualElement>
+      <elementName>Out</elementName>
+      <elementAttributes>
+        <entry>
+          <string>Label</string>
+          <string>D</string>
+        </entry>
+        <entry>
+          <string>Bits</string>
+          <int>8</int>
+        </entry>
+      </elementAttributes>
+      <pos x="-400" y="-320"/>
+    </visualElement>
+    <visualElement>
+      <elementName>Out</elementName>
+      <elementAttributes>
+        <entry>
+          <string>Label</string>
+          <string>A</string>
+        </entry>
+        <entry>
+          <string>Bits</string>
+          <int>16</int>
+        </entry>
+      </elementAttributes>
+      <pos x="-400" y="-280"/>
+    </visualElement>
+    <visualElement>
+      <elementName>Clock</elementName>
+      <elementAttributes>
+        <entry>
+          <string>runRealTime</string>
+          <boolean>true</boolean>
+        </entry>
+        <entry>
+          <string>Label</string>
+          <string>clk</string>
+        </entry>
+        <entry>
+          <string>Frequency</string>
+          <int>2147483647</int>
+        </entry>
+      </elementAttributes>
+      <pos x="-900" y="-220"/>
+    </visualElement>
+    <visualElement>
+      <elementName>In</elementName>
+      <elementAttributes>
+        <entry>
+          <string>Label</string>
+          <string>R</string>
+        </entry>
+      </elementAttributes>
+      <pos x="-900" y="-260"/>
+    </visualElement>
+    <visualElement>
+      <elementName>Out</elementName>
+      <elementAttributes>
+        <entry>
+          <string>Label</string>
+          <string>W/~R</string>
+        </entry>
+      </elementAttributes>
+      <pos x="-400" y="-240"/>
+    </visualElement>
+    <visualElement>
+      <elementName>Out</elementName>
+      <elementAttributes>
+        <entry>
+          <string>Label</string>
+          <string>BEn</string>
+        </entry>
+      </elementAttributes>
+      <pos x="-400" y="-200"/>
+    </visualElement>
+    <visualElement>
+      <elementName>simple cpu.dig</elementName>
+      <elementAttributes/>
+      <pos x="-800" y="-320"/>
+    </visualElement>
+    <visualElement>
+      <elementName>Ground</elementName>
+      <elementAttributes/>
+      <pos x="-860" y="-380"/>
+    </visualElement>
+  </visualElements>
+  <wires>
+    <wire>
+      <p1 x="-900" y="-260"/>
+      <p2 x="-800" y="-260"/>
+    </wire>
+    <wire>
+      <p1 x="-860" y="-280"/>
+      <p2 x="-800" y="-280"/>
+    </wire>
+    <wire>
+      <p1 x="-420" y="-280"/>
+      <p2 x="-400" y="-280"/>
+    </wire>
+    <wire>
+      <p1 x="-420" y="-200"/>
+      <p2 x="-400" y="-200"/>
+    </wire>
+    <wire>
+      <p1 x="-860" y="-300"/>
+      <p2 x="-800" y="-300"/>
+    </wire>
+    <wire>
+      <p1 x="-660" y="-300"/>
+      <p2 x="-420" y="-300"/>
+    </wire>
+    <wire>
+      <p1 x="-900" y="-220"/>
+      <p2 x="-880" y="-220"/>
+    </wire>
+    <wire>
+      <p1 x="-660" y="-220"/>
+      <p2 x="-420" y="-220"/>
+    </wire>
+    <wire>
+      <p1 x="-860" y="-320"/>
+      <p2 x="-800" y="-320"/>
+    </wire>
+    <wire>
+      <p1 x="-660" y="-320"/>
+      <p2 x="-400" y="-320"/>
+    </wire>
+    <wire>
+      <p1 x="-880" y="-240"/>
+      <p2 x="-800" y="-240"/>
+    </wire>
+    <wire>
+      <p1 x="-660" y="-240"/>
+      <p2 x="-400" y="-240"/>
+    </wire>
+    <wire>
+      <p1 x="-420" y="-300"/>
+      <p2 x="-420" y="-280"/>
+    </wire>
+    <wire>
+      <p1 x="-420" y="-220"/>
+      <p2 x="-420" y="-200"/>
+    </wire>
+    <wire>
+      <p1 x="-860" y="-380"/>
+      <p2 x="-860" y="-320"/>
+    </wire>
+    <wire>
+      <p1 x="-860" y="-320"/>
+      <p2 x="-860" y="-300"/>
+    </wire>
+    <wire>
+      <p1 x="-860" y="-300"/>
+      <p2 x="-860" y="-280"/>
+    </wire>
+    <wire>
+      <p1 x="-880" y="-240"/>
+      <p2 x="-880" y="-220"/>
+    </wire>
+  </wires>
+  <measurementOrdering/>
+</circuit>
