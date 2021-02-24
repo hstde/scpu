@@ -1,6 +1,7 @@
 namespace Sasm.Parsing.Ast
 {
     using System;
+    using Sasm.Parsing.ParseTree;
 
     public class BinaryOperator : AstNode
     {
@@ -13,7 +14,7 @@ namespace Sasm.Parsing.Ast
         public readonly AstNode right;
         public readonly ExpressionType op;
 
-        public BinaryOperator(SourceReference reference) : base(reference)
+        public BinaryOperator(SourceReference reference, ParseTreeNode node) : base(reference)
         {
         }
     }
