@@ -17,7 +17,7 @@ namespace Sasm.CodeGeneration
             }
         }
 
-        public static bool TakesShortArgument(OpCode op)
+        public static bool TakesTwoByteArgument(OpCode op)
         {
             switch (op.operand)
             {
@@ -31,7 +31,7 @@ namespace Sasm.CodeGeneration
 
         public static bool TakesNoArgument(OpCode op)
         {
-            return !(TakesSingleByteArgument(op) || TakesShortArgument(op));
+            return !(TakesSingleByteArgument(op) || TakesTwoByteArgument(op));
         }
     }
 }
