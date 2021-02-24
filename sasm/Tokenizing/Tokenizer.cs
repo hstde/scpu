@@ -2,10 +2,7 @@ namespace Sasm.Tokenizing
 {
     using System;
     using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.IO;
     using System.Linq;
-    using System.Security.Cryptography;
     using static Sasm.Tokenizing.TokenType;
 
     public class Tokenizer
@@ -33,13 +30,21 @@ namespace Sasm.Tokenizing
         };
         private static char[] operators = new char[]
         {
-            '+', '-'
+            '+', '-', '*', '/'
         };
         private static string[] commands = new string[]
         {
             ".define", ".include", ".section", ".org",
-            "db", "dw", ".times"
+            "db", "dw", ".times",
+            ".warning"
+
         };
+        private const int MinCharDefinitionLength = 2;
+        private const int NormalCharDefinitionLength = 3;
+        private const int EscapedCharDefintionLength = 4;
+        private const int NormalCharClosingDelimiterOffset = 2;
+        private const int EscapedCharClosingDelimiterOffset = 3;
+
         private const char LParen = '(';
         private const char RParen = ')';
         private const char LabelTerminator = ':';
@@ -53,12 +58,23 @@ namespace Sasm.Tokenizing
         private const char NumberFormatHelper = '_';
         private const char CommandPrefix = '.';
         private const char ArgumentSeparator = ',';
+        private const char CurrentLineAddressMarker = '$';
 
-
-        public IEnumerable<Token> TokenizeLine(string line)
+        public IReadOnlyList<Token> Tokenize(string contents)
         {
             var tokens = new List<Token>();
 
+            var lines = contents.Split('\n');
+
+            var lineNumber = 0;
+            foreach (var line in lines)
+                TokenizeLine(lineNumber++, line, ref tokens);
+
+            return tokens;
+        }
+
+        private void TokenizeLine(int lineNumber, string line, ref List<Token> tokens)
+        {
             int position = 0;
 
             while (position < line.Length)
@@ -68,55 +84,58 @@ namespace Sasm.Tokenizing
                 if (position >= line.Length)
                     break;
 
-                if (IsComment(line, ref position, out var token))
+                if (IsComment(lineNumber, line, ref position, out var token))
                     tokens.Add(token.Value);
 
-                else if (IsNumber(line, ref position, out token))
+                else if (IsNumber(lineNumber, line, ref position, out token))
                     tokens.Add(token.Value);
 
-                else if (IsNameOrCommandOrMnemonicOrReg(line, ref position, out token))
+                else if (IsNameOrCommandOrMnemonicOrReg(lineNumber, line, ref position, out token))
                     tokens.Add(token.Value);
 
-                else if (IsSimpleToken(line, ref position, out token))
+                else if (IsSimpleToken(lineNumber, line, ref position, out token))
                     tokens.Add(token.Value);
 
-                else if (IsCharDefinition(line, ref position, out token))
+                else if (IsCharDefinition(lineNumber, line, ref position, out token))
                     tokens.Add(token.Value);
 
-                else if (IsStringDefinition(line, ref position, out token))
+                else if (IsStringDefinition(lineNumber, line, ref position, out token))
                     tokens.Add(token.Value);
 
                 else
-                    tokens.Add(ConsumeUnknown(line, ref position));
+                    tokens.Add(ConsumeUnknown(lineNumber, line, ref position));
             }
 
-            return tokens;
+            // we have reached the end of the line here
+            tokens.Add(new Token(EndOfLine, lineNumber, line, position, 0));
         }
 
-        private bool IsCharDefinition(string line, ref int position, out Token? token)
+        private bool IsCharDefinition(int lineNumber, string line, ref int position, out Token? token)
         {
             token = null;
-
             if (!(line[position] is CharDeliminator))
                 return false;
-            if (line.Length < position + 3)
-                return false;
-            if (!(line[position + 2] is CharDeliminator))
+            if (line.Length < position + MinCharDefinitionLength)
                 return false;
 
-            // consume the first deliminator
-            position++;
-            int start = position;
-            // skip the char
-            position++;
-            // skip the last deliminator
-            position++;
+            bool hasEscapeCode = line[position + 1] is StringEscapeCharacter;
+            int expectedLength = hasEscapeCode ? EscapedCharDefintionLength : NormalCharDefinitionLength;
+            int expectedDelimitorOffset = hasEscapeCode ? EscapedCharClosingDelimiterOffset : NormalCharClosingDelimiterOffset;
 
-            token = new Token(TokenType.Char, line, start, 1);
+            if (line.Length < position + expectedLength)
+                return false;
+            if (!(line[position + expectedDelimitorOffset] is CharDeliminator))
+                return false;
+
+            int start = position + 1;
+
+            position += expectedLength;
+
+            token = new Token(TokenType.Char, lineNumber, line, start, expectedLength - 2);
             return true;
         }
 
-        private bool IsStringDefinition(string line, ref int position, out Token? token)
+        private bool IsStringDefinition(int lineNumber, string line, ref int position, out Token? token)
         {
             token = null;
 
@@ -131,18 +150,19 @@ namespace Sasm.Tokenizing
             position++;
             while (position < line.Length && !(line[position] is StringDeliminator))
             {
-                position++;
                 if (position < line.Length && line[position] is StringEscapeCharacter)
                     position++;
-                else if (position < line.Length && line[position] is StringDeliminator)
-                    isClosed = true;
+                position++;
             }
+
+            if (position < line.Length && line[position] is StringDeliminator)
+                isClosed = true;
 
             position++;
 
             if (isClosed)
             {
-                token = new Token(TokenType.String, line, start + 1, position - start - 2);
+                token = new Token(TokenType.String, lineNumber, line, start + 1, position - start - 2);
                 return true;
             }
             else
@@ -152,7 +172,7 @@ namespace Sasm.Tokenizing
             }
         }
 
-        private bool IsSimpleToken(string line, ref int position, out Token? token)
+        private bool IsSimpleToken(int lineNumber, string line, ref int position, out Token? token)
         {
             int start = position;
             token = null;
@@ -161,19 +181,19 @@ namespace Sasm.Tokenizing
             {
                 case LParen:
                     position++;
-                    token = new Token(TokenType.LParen, line, start, 1);
+                    token = new Token(TokenType.LParen, lineNumber, line, start, 1);
                     break;
                 case RParen:
                     position++;
-                    token = new Token(TokenType.RParen, line, start, 1);
+                    token = new Token(TokenType.RParen, lineNumber, line, start, 1);
                     break;
                 case ArgumentSeparator:
                     position++;
-                    token = new Token(Separator, line, start, 1);
+                    token = new Token(Separator, lineNumber, line, start, 1);
                     break;
                 case char c when operators.Contains(c):
                     position++;
-                    token = new Token(TokenType.Operator, line, start, 1);
+                    token = new Token(TokenType.Operator, lineNumber, line, start, 1);
                     break;
                 default:
                     return false;
@@ -182,7 +202,7 @@ namespace Sasm.Tokenizing
             return true;
         }
 
-        private bool IsComment(string line, ref int position, out Token? token)
+        private bool IsComment(int lineNumber, string line, ref int position, out Token? token)
         {
             token = null;
             if (!IsCommentStart(line[position]))
@@ -191,17 +211,17 @@ namespace Sasm.Tokenizing
             int start = position;
             position = line.Length;
 
-            token = new Token(Comment, line, start, position - start);
+            token = new Token(Comment, lineNumber, line, start, position - start);
             return true;
         }
 
-        private Token ConsumeUnknown(string line, ref int position)
+        private Token ConsumeUnknown(int lineNumber, string line, ref int position)
         {
             position++;
-            return new Token(Unknown, line, position - 1, 1);
+            return new Token(Unknown, lineNumber, line, position - 1, 1);
         }
 
-        private bool IsNameOrCommandOrMnemonicOrReg(string line, ref int position, out Token? token)
+        private bool IsNameOrCommandOrMnemonicOrReg(int lineNumber, string line, ref int position, out Token? token)
         {
             int start = position;
             token = null;
@@ -224,19 +244,19 @@ namespace Sasm.Tokenizing
             string tokenText = line.Substring(start, length);
             string tokenTextLower = tokenText.ToLower();
 
-            if (commands.Contains(tokenText))
+            if (commands.Contains(tokenTextLower))
                 type = Command;
             else if (mnemonics.Contains(tokenTextLower))
                 type = Mnemonic;
             else if (registers.Contains(tokenTextLower))
                 type = Register;
-            else if(position < line.Length && line[position] is LabelTerminator)
+            else if (position < line.Length && line[position] is LabelTerminator)
             {
                 position++;
                 type = LabelDefinition;
             }
 
-            token = new Token(type, tokenText, start);
+            token = new Token(type, lineNumber, tokenText, start);
             return true;
         }
 
@@ -246,7 +266,7 @@ namespace Sasm.Tokenizing
                 position++;
         }
 
-        private bool IsNumber(string line, ref int position, out Token? token)
+        private bool IsNumber(int lineNumber, string line, ref int position, out Token? token)
         {
             token = null;
             if (!IsNumeric(line[position]))
@@ -283,13 +303,13 @@ namespace Sasm.Tokenizing
                     || line[position] is NumberFormatHelper))
                 position++;
 
-            token = new Token(type, line, start, position - start);
+            token = new Token(type, lineNumber, line, start, position - start);
             return true;
         }
 
         private bool IsCommentStart(char c) => c is CommentStart;
         private bool IsWhitespace(char c) => c is ' ' || c is '\t';
-        private bool IsIdentStart(char c) => IsAlpha(c) || c is CommandPrefix || c is NumberFormatHelper;
+        private bool IsIdentStart(char c) => IsAlpha(c) || c is CommandPrefix || c is NumberFormatHelper || c is CurrentLineAddressMarker;
         private bool IsNumeric(char c) => IsDecNumber(c);
         private bool IsBinNumber(char c) => c is '0' || c is '1';
         private bool IsOctNumber(char c) => (c >= '0' && c <= '7');

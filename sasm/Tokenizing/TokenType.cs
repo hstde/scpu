@@ -19,5 +19,6 @@ namespace Sasm.Tokenizing
             Operator,
             Identifier,
             Separator,
+            EndOfLine,
     }
 }
