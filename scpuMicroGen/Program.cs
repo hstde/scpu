@@ -5,6 +5,7 @@ namespace ScpuMicroGen
     using System.Linq;
     using System.Threading.Tasks;
     using System;
+    using Sasm.CodeGeneration;
 
     class Program
     {
@@ -100,8 +101,8 @@ namespace ScpuMicroGen
                 for (int o = 0; o < NumberOpcodes; o++)
                 {
                     var flags = (Flags)f;
-                    var primaryOp = (Opcodes)o;
-                    var extendedOp = (ExtOpcodes)o;
+                    var primaryOp = (OpCodeValues)o;
+                    var extendedOp = (OpCodeValues)(0xFF00 | o);
                     var lines = generator(flags, (byte)o);
                     if (lines.Item1.Length != lines.Item2.Length)
                     {
