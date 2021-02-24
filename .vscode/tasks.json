@@ -51,10 +51,19 @@
                 "--output=controlroms"
             ],
             "problemMatcher": "$msCompile",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "group": "none"
+        },
+        {
+            "label": "build micro code gen",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "--project",
+                "${workspaceFolder}/scpuMicroGen/ScpuMicroGen.csproj"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
         }
     ]
 }
