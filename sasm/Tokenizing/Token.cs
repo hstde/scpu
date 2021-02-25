@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using Sasm.Parsing;
 
 namespace Sasm.Tokenizing
 {
@@ -7,29 +8,25 @@ namespace Sasm.Tokenizing
     {
         public TokenType TokenType { get; }
         public string Content { get; }
-        public int LineNumber { get; }
-        public int Start { get; }
-        public int Length => Content.Length;
+        public SourceReference Source { get; }
 
         public Token(TokenType type, int lineNumber, string line, int start, int length)
         {
             TokenType = type;
-            Start = start;
             Content = line.Substring(start, length);
-            LineNumber = lineNumber;
+            Source = new SourceReference(lineNumber, start, length);
         }
 
         public Token(TokenType type, int lineNumber, string content, int start)
         {
             TokenType = type;
-            Start = start;
             Content = content;
-            LineNumber = lineNumber;
+            Source = new SourceReference(lineNumber, start, content.Length);
         }
 
         public override string ToString()
         {
-            return $"{TokenType} @ {Start}:{Length} \"{Content}\"";
+            return $"{TokenType} @ {Source.start}:{Source.length} \"{Content}\"";
         }
 
         public override bool Equals(object obj)
@@ -37,14 +34,12 @@ namespace Sasm.Tokenizing
             return obj is Token token &&
                    TokenType == token.TokenType &&
                    Content == token.Content &&
-                   LineNumber == token.LineNumber &&
-                   Start == token.Start &&
-                   Length == token.Length;
+                   Source.Equals(token.Source);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TokenType, Content, LineNumber, Start, Length);
+            return HashCode.Combine(TokenType, Content, Source);
         }
     }
 }

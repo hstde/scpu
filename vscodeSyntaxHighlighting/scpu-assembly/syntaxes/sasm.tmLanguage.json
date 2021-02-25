@@ -1,0 +1,131 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "sasm",
+	"fileTypes": [
+		".asm"
+	],
+	"patterns": [
+		{
+			"include": "#mnemonics"
+		},
+		{
+			"include": "#directives"
+		},
+		{
+			"include": "#registers"
+		},
+		{
+			"include": "#identifier"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#chars"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#operators"
+		},
+		{
+			"include": "#memoryAccess"
+		},
+		{
+			"include": "#separator"
+		}
+	],
+	"repository": {
+		"mnemonics": {
+			"patterns": [
+				{
+					"name": "entity.name.function.sasm",
+					"match": "(?i)\\b(nop|ld|mov|and|or|xor|not|neg|shl|scl|shr|scr|add|adc|sub|sbc|inc|dec|cmp|test|push|pop|scf|ssf|szf|sif|ccf|csf|czf|cif|j|jz|je|jnz|jne|jc|jnc|js|jns|jl|ret|irq|reti|lea)\\b"
+				}
+			]
+		},
+		"directives": {
+			"patterns": [
+				{
+					"name": "keyword.control.sasm",
+					"match": "(?i)(?<![\\w\\d])(\\.(segment|org|include|times|warning|const)|(db|dw))(?!\\S)"
+				}
+			]
+		},
+		"registers": {
+			"patterns": [
+				{
+					"name": "support.type.sasm",
+					"match": "(?i)\\b(a|b|c|d|e|h|l|af|bc|de|hl|ix|iy|sp|lr|iv)\\b"
+				}
+			]
+		},
+		"identifier": {
+			"patterns": [
+				{
+					"name": "variable.name.sasm",
+					"match": "(?i)(?<![\\w\\d])([\\.\\_\\$a-z][\\.\\_\\$a-z0-9]*)(?![\\w\\d])"
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.sasm",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.sasm",
+					"match": "\\\\."
+				}
+			]
+		},
+		"chars": {
+			"name": "constant.character.sasm",
+			"begin": "'",
+			"end": "'",
+			"patterns": [
+				{
+					"name": "constant.character.escape.sasm",
+					"match": "\\\\."
+				}
+			]
+		},
+		"numbers": {
+			"name": "constant.numeric.sasm",
+			"match": "(?i)\\b((0b[0-1\\_]+)|(0x[0-9a-f\\_]+)|(0[0-7\\_]+)|([0-9\\_][0-9\\_]*))\\b"
+		},
+		"comments": {
+			"name": "comment.line.sasm",
+			"begin": ";",
+			"end": "$"
+		},
+		"operators": {
+			"name": "keyword.operator.sasm",
+			"match": "(\\+|\\-|\\*|\\/)"
+		},
+		"memoryAccess": {
+			"name": "keyword.other.sasm",
+			"begin": "\\[",
+			"beginCaptures": {
+				"0": {
+					"name": "punctioation.memory.start"
+				}
+			},
+			"end": "\\]",
+			"endCaptures": {
+				"0": {
+					"name": "punctioation.memory.end"
+				}
+			}
+		},
+		"separator": {
+			"name": "keyword.operator.sasm",
+			"match": "(\\,)"
+		}
+	},
+	"scopeName": "source.sasm"
+}

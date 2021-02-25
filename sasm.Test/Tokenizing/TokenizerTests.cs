@@ -21,21 +21,27 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(type, 0, text, 0, text.Length),
-                            CreateEolToken(text)
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
 
                 string emptyLine = string.Empty;
-                yield return new TestCaseData(emptyLine, new Token[] { CreateEolToken(emptyLine) })
+                yield return new TestCaseData(
+                    emptyLine,
+                    new Token[] {
+                        CreateEolToken(emptyLine),
+                        CreateEofToken()
+                    })
                     .SetName("{m}_Generates a valid End of line token on empty input");
 
                 yield return CreateCase("(", LParen, "left parenthesis");
                 yield return CreateCase(")", RParen, "right parenthesis");
-                yield return CreateCase("+", Operator, "operator +");
-                yield return CreateCase("-", Operator, "operator -");
-                yield return CreateCase("*", Operator, "operator *");
-                yield return CreateCase("/", Operator, "operator /");
+                yield return CreateCase("+", AddOp, "operator +");
+                yield return CreateCase("-", AddOp, "operator -");
+                yield return CreateCase("*", MulOp, "operator *");
+                yield return CreateCase("/", MulOp, "operator /");
                 yield return CreateCase(",", Separator, "separator");
             }
         }
@@ -51,7 +57,8 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(LabelDefinition, 0, label, 0, label.Length - 1),
-                            CreateEolToken(label)
+                            CreateEolToken(label),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -64,7 +71,8 @@ namespace Sasm.Test.Tokenizing
                         {
                             new Token(firstTokenType, 0, errorLabel, 0, errorLabel.Length - 1),
                             new Token(Unknown, 0, errorLabel, errorLabel.Length - 1, 1),
-                            CreateEolToken(errorLabel)
+                            CreateEolToken(errorLabel),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -87,8 +95,8 @@ namespace Sasm.Test.Tokenizing
 
                 yield return CreateErrorCase("1:", DecNumber, "label should not be number");
                 yield return CreateErrorCase("mov:", Mnemonic, "label should not be mnemonic");
-                yield return CreateErrorCase("dw:", Command, "label should not be command");
-                yield return CreateErrorCase(".include:", Command, "label should not be dot command");
+                yield return CreateErrorCase("dw:", DataDefinition, "label should not be command");
+                yield return CreateErrorCase(".include:", Include, "label should not be dot command");
             }
         }
 
@@ -96,14 +104,15 @@ namespace Sasm.Test.Tokenizing
         {
             get
             {
-                TestCaseData CreateCase(string number, TokenType numberType, string testName)
+                TestCaseData CreateCase(string number, TokenType numberType, string testName, int start = 0)
                 {
                     return new TestCaseData(
                         number,
                         new Token[]
                         {
-                            new Token(numberType, 0, number, 0, number.Length),
-                            CreateEolToken(number)
+                            new Token(numberType, 0, number, start, number.Length - start),
+                            CreateEolToken(number),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -112,6 +121,9 @@ namespace Sasm.Test.Tokenizing
                 yield return CreateCase("01234", OctNumber, "octal number");
                 yield return CreateCase("0b1001", BinNumber, "binary number");
                 yield return CreateCase("0x100f", HexNumber, "hexadecimal number");
+                yield return CreateCase("-1234", DecNumber, "negative decimal number");
+                yield return CreateCase("-01234", DecNumber, "negative decimal number with leading zero");
+                yield return CreateCase(" -1234", DecNumber, "negative decimal number with leading whitespace", 1);
 
                 yield return CreateCase("12_34", DecNumber, "decimal number with grouping helper");
                 yield return CreateCase("1234_", DecNumber, "decimal number with grouping helper after last digit");
@@ -138,7 +150,8 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Identifier, 0, text, 0, text.Length),
-                            CreateEolToken(text)
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -164,7 +177,8 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Mnemonic, 0, text, 0, text.Length),
-                            CreateEolToken(text)
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -186,7 +200,8 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Register, 0, text, 0, text.Length),
-                            CreateEolToken(text)
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -201,27 +216,28 @@ namespace Sasm.Test.Tokenizing
         {
             get
             {
-                TestCaseData CreateCase(string text, string testName)
+                TestCaseData CreateCase(string text, TokenType type, string testName)
                 {
                     return new TestCaseData(
                         text,
                         new Token[]
                         {
-                            new Token(Command, 0, text, 0, text.Length),
-                            CreateEolToken(text)
+                            new Token(type, 0, text, 0, text.Length),
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
 
-                yield return CreateCase(".include", "dotted lower case command");
-                yield return CreateCase("db", "not dotted lower case command");
+                yield return CreateCase(".include", Include, "dotted lower case command");
+                yield return CreateCase("db", DataDefinition, "not dotted lower case command");
 
-                yield return CreateCase(".INCLUDE", "dotted upper case command");
-                yield return CreateCase("DB", "not dotted upper case command");
+                yield return CreateCase(".INCLUDE", Include, "dotted upper case command");
+                yield return CreateCase("DB", DataDefinition, "not dotted upper case command");
 
 
-                yield return CreateCase(".iNcLuDe", "dotted mixed case command");
-                yield return CreateCase("dB", "not dotted mixed case command");
+                yield return CreateCase(".iNcLuDe", Include, "dotted mixed case command");
+                yield return CreateCase("dB", DataDefinition, "not dotted mixed case command");
             }
         }
 
@@ -236,7 +252,8 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Comment, 0, text, 0, text.Length),
-                            CreateEolToken(text)
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -258,7 +275,8 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(TokenType.Char, 0, text, 1, text.Length - 2),
-                            CreateEolToken(text)
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -271,7 +289,8 @@ namespace Sasm.Test.Tokenizing
                         {
                             new Token(Unknown, 0, errorLabel, 0, 1),
                             new Token(secondTokenType, 0, errorLabel, 1, errorLabel.Length - 1),
-                            CreateEolToken(errorLabel)
+                            CreateEolToken(errorLabel),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -285,7 +304,8 @@ namespace Sasm.Test.Tokenizing
                             new Token(Unknown, 0, errorLabel, 0, 1),
                             new Token(secondTokenType, 0, errorLabel, 1, secondLength),
                             new Token(secondTokenType, 0, errorLabel, 1 + secondLength, thirdLength),
-                            CreateEolToken(errorLabel)
+                            CreateEolToken(errorLabel),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -310,7 +330,8 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(TokenType.String, 0, text, 1, text.Length - 2),
-                            CreateEolToken(text)
+                            CreateEolToken(text),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -323,7 +344,8 @@ namespace Sasm.Test.Tokenizing
                         {
                             new Token(Unknown, 0, errorLabel, 0, 1),
                             new Token(secondTokenType, 0, errorLabel, 1, errorLabel.Length - 1),
-                            CreateEolToken(errorLabel)
+                            CreateEolToken(errorLabel),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -337,7 +359,8 @@ namespace Sasm.Test.Tokenizing
                             new Token(Unknown, 0, errorLabel, 0, 1),
                             new Token(secondTokenType, 0, errorLabel, 1, secondLength),
                             new Token(secondTokenType, 0, errorLabel, 1 + secondLength, thirdLength),
-                            CreateEolToken(errorLabel)
+                            CreateEolToken(errorLabel),
+                            CreateEofToken()
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -351,6 +374,62 @@ namespace Sasm.Test.Tokenizing
             }
         }
 
+        public static IEnumerable<TestCaseData> MinusOperatorPrefixCases
+        {
+            get
+            {
+                TestCaseData CreateCase(
+                    string line,
+                    string name,
+                    params (TokenType type, int start, int length)[] tokens)
+                {
+                    var tokenBuilder = new List<Token>();
+
+                    foreach(var t in tokens)
+                        tokenBuilder.Add(new Token(t.type, 0, line, t.start, t.length));
+
+                    tokenBuilder.Add(CreateEolToken(line));
+                    tokenBuilder.Add(CreateEofToken());
+
+                    return new TestCaseData(
+                        line,
+                        tokenBuilder.ToArray())
+                        .SetName("{m}_" + name);
+                }
+
+                yield return CreateCase(
+                    "1-1", "simple substraction without whitespace",
+                    (TokenType.DecNumber, 0, 1), (TokenType.AddOp, 1, 1), (TokenType.DecNumber, 2, 1));
+                yield return CreateCase(
+                    "1 - 1", "simple substraction with whitespace",
+                    (TokenType.DecNumber, 0, 1), (TokenType.AddOp, 2, 1), (TokenType.DecNumber, 4, 1));
+                yield return CreateCase(
+                    "1 -1", "simple substraction with no whitespace between minus and number",
+                    (TokenType.DecNumber, 0, 1), (TokenType.AddOp, 2, 1), (TokenType.DecNumber, 3, 1));
+                yield return CreateCase(
+                    "i-1", "simple substraction from ident",
+                    (TokenType.Identifier, 0, 1), (TokenType.AddOp, 1, 1), (TokenType.DecNumber, 2, 1));
+                yield return CreateCase(
+                    "$-1", "simple substraction from special ident",
+                    (TokenType.Identifier, 0, 1), (TokenType.AddOp, 1, 1), (TokenType.DecNumber, 2, 1));
+                yield return CreateCase(
+                    "bc-1", "simple substraction from register",
+                    (TokenType.Register, 0, 2), (TokenType.AddOp, 2, 1), (TokenType.DecNumber, 3, 1));
+                yield return CreateCase(
+                    "(1-2)-3", "substraction with partheses",
+                    (TokenType.LParen, 0, 1),
+                        (TokenType.DecNumber, 1, 1), (TokenType.AddOp, 2, 1), (TokenType.DecNumber, 3, 1),
+                    (TokenType.RParen, 4, 1),
+                    (TokenType.AddOp, 5, 1), (TokenType.DecNumber, 6, 1));
+                yield return CreateCase(
+                    "(-1", "negative after opening parenthesis",
+                    (TokenType.LParen, 0, 1), (TokenType.DecNumber, 1, 2));
+                yield return CreateCase(
+                    " -1", "negative after whitespace",
+                    (TokenType.DecNumber, 1, 2));
+            }
+        }
+
         [TestCaseSource(nameof(SimpleCases))]
         [TestCaseSource(nameof(LabelCases))]
         [TestCaseSource(nameof(NumberCases))]
@@ -361,6 +440,7 @@ namespace Sasm.Test.Tokenizing
         [TestCaseSource(nameof(CommentCases))]
         [TestCaseSource(nameof(CharCases))]
         [TestCaseSource(nameof(StringCases))]
+        [TestCaseSource(nameof(MinusOperatorPrefixCases))]
         public void TokenizesCorrectly(string content, Token[] expectedTokens)
         {
             var tokenizer = new Tokenizer();
@@ -372,6 +452,11 @@ namespace Sasm.Test.Tokenizing
         private static Token CreateEolToken(string line, int lineNumber = 0)
         {
             return new Token(EndOfLine, lineNumber, line, line.Length, 0);
+        }
+
+        private static Token CreateEofToken(int lineNumber = 1)
+        {
+            return new Token(EndOfFile, lineNumber, "", 0, 0);
         }
     }
 }

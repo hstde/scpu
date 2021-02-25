@@ -15,23 +15,23 @@ MAIN:
     RET
 
 PRINT:
-    LD IY, (SCREENBUFFER)
-    LD HL, (SCREENOFFSET)
+    LD IY, [SCREENBUFFER]
+    LD HL, [SCREENOFFSET]
 
     POP BC
 
     LD B, 0x07
     .LOOP:
-        LD A, (BC)
+        LD A, [BC]
         INC BC
         TEST 0
             JZ .ENDLOOP ; while *ix != 0
-        LEA IX, (IY + HL)
-        LD (IX), A
-        LD (IX + 1), B
+        LEA IX, [IY + HL]
+        LD [IX], A
+        LD [IX + 1], B
         ADD HL, 2
         J .LOOP
     .ENDLOOP:
 
-    LD (SCREENOFFSET), HL
+    LD [SCREENOFFSET], HL
     RET

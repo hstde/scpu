@@ -7,5 +7,10 @@ namespace Sasm.Parsing.ParseTree
         public readonly ParseTreeNode root;
 
         public bool HasError => root.HasErrors;
+
+        public ParseTree(ParseTreeNode root)
+        {
+            this.root = root;
+        }
     }
 }
