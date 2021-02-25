@@ -109,18 +109,7 @@
 		},
 		"memoryAccess": {
 			"name": "keyword.other.sasm",
-			"begin": "\\[",
-			"beginCaptures": {
-				"0": {
-					"name": "punctioation.memory.start"
-				}
-			},
-			"end": "\\]",
-			"endCaptures": {
-				"0": {
-					"name": "punctioation.memory.end"
-				}
-			}
+			"match": "\\[|\\]"
 		},
 		"separator": {
 			"name": "keyword.operator.sasm",
