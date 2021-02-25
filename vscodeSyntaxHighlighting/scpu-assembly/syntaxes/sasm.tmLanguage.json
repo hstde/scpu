@@ -43,7 +43,7 @@
 		"mnemonics": {
 			"patterns": [
 				{
-					"name": "entity.name.function.sasm",
+					"name": "keyword.mnemonic.asm.sasm",
 					"match": "(?i)\\b(nop|ld|mov|and|or|xor|not|neg|shl|scl|shr|scr|add|adc|sub|sbc|inc|dec|cmp|test|push|pop|scf|ssf|szf|sif|ccf|csf|czf|cif|j|jz|je|jnz|jne|jc|jnc|js|jns|jl|ret|irq|reti|lea)\\b"
 				}
 			]
@@ -51,7 +51,7 @@
 		"directives": {
 			"patterns": [
 				{
-					"name": "keyword.control.sasm",
+					"name": "entity.name.function.sasm",
 					"match": "(?i)(?<![\\w\\d])(\\.(segment|org|include|times|warning|const)|(db|dw))(?!\\S)"
 				}
 			]
