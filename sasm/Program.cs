@@ -14,31 +14,37 @@ namespace Sasm
         {
             var tokenizer = new Tokenizer();
             var parser = new Parser();
+            var lines = new List<string>();
 
-            while (true)
+            string line = "";
+            int lineNumber = 1;
+            while (line != ".")
             {
-                Console.Write("> ");
-                var line = Console.ReadLine();
-                var tokens = tokenizer.Tokenize(line);
-                var tree = parser.ParseTokenList(tokens);
-
-                PrintParseTree(line, tree);
-                Console.WriteLine();
+                Console.Write($"{lineNumber++} ");
+                line = Console.ReadLine();
+                lines.Add(line);
             }
+
+
+            var tokens = tokenizer.Tokenize(string.Join("\n", lines));
+            var tree = parser.ParseTokenList(tokens);
+
+            PrintParseTree(lines, tree);
+            Console.WriteLine();
         }
 
-        private static void PrintParseTree(string line, Parsing.ParseTree.ParseTree tree)
+        private static void PrintParseTree(IReadOnlyList<string> lines, Parsing.ParseTree.ParseTree tree)
         {
             var currentNode = tree.root;
             int currentIndentation = 0;
 
             if (tree.HasErrors)
-                PrintError(line, tree);
+                PrintError(lines, tree);
             else
                 PrintNode(currentNode, currentIndentation);
         }
 
-        private static void PrintError(string line, ParseTree tree)
+        private static void PrintError(IReadOnlyList<string> lines, ParseTree tree)
         {
             const string lineString = "in line {0}: ";
             var errors = ErrorHelper.CollectErrors(tree).ToArray();
@@ -57,10 +63,11 @@ namespace Sasm
                 var marker = string.Concat(
                     new string(' ', startOfMarker),
                     new string('^', markerLength));
-                Console.Write(formattedLine);
-                Console.WriteLine(line);
-                Console.WriteLine(marker);
+                Console.WriteLine();
                 Console.WriteLine(e.ErrorMessage);
+                Console.Write(formattedLine);
+                Console.WriteLine(lines[e.sourceReference.lineNumber]);
+                Console.WriteLine(marker);
             }
         }
 

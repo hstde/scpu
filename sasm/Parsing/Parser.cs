@@ -26,9 +26,16 @@ namespace Sasm.Parsing
 
         private ParseTreeNode ParseStart(Token[] tokens, ref int position)
         {
-            if (!TryParseLine(tokens, ref position, out var root))
+            var lines = new List<ParseTreeNode>();
+
+            while (!IsToken(tokens, position, TokenType.EndOfFile))
             {
-                root = CreateErrorAndRecover("line", tokens, ref position);
+                if (!TryParseLine(tokens, ref position, out var line))
+                {
+                    line = CreateErrorAndRecover("line", tokens, ref position);
+                    position++;
+                }
+                lines.Add(line);
             }
 
             if (!IsToken(tokens, position, TokenType.EndOfFile))
@@ -36,6 +43,7 @@ namespace Sasm.Parsing
                 throw new Exception("Did not parse the entire program! Found another token: " + tokens[position]);
             }
 
+            var root = new StartNode(new SourceReference(0, 0, 0), lines);
             return root;
         }
 
