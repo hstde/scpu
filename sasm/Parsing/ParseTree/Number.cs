@@ -14,9 +14,15 @@ namespace Sasm.Parsing.ParseTree
             Value = value;
         }
 
+        public Number(SourceReference sourceReference, char value)
+            : base(sourceReference, null)
+        {
+            Value = value;
+        }
+
         public override string ToString()
         {
-            return base.ToString() + " Value: " + Value;
+            return $"Number Value: {Value}|'{(char)Value}'";
         }
     }
 }

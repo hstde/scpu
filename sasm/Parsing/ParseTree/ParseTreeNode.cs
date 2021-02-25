@@ -19,6 +19,7 @@ namespace Sasm.Parsing.ParseTree
             IReadOnlyList<ParseTreeNode> children)
         {
             this.sourceReference = sourceReference;
+            Children = children;
         }
     }
 }

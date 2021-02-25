@@ -1,8 +1,10 @@
 using System;
+using System.Diagnostics;
 using Sasm.Tokenizing;
 
 namespace Sasm.Parsing
 {
+    [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
     public struct SourceReference
     {
         public readonly int lineNumber;
@@ -27,6 +29,16 @@ namespace Sasm.Parsing
         public override int GetHashCode()
         {
             return HashCode.Combine(lineNumber, start, length);
+        }
+
+        public override string ToString()
+        {
+            return $"line {lineNumber} @ {start}:{length}";
+        }
+
+        private string GetDebuggerDisplay()
+        {
+            return ToString();
         }
     }
 }

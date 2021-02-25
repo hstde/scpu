@@ -28,18 +28,16 @@ constant = Char
 constant = constExpr
 
 constExpr = addTerm (AddOp addTerm)?
-addTerm = mulTerm (MulOp mulTerm)?
-mulTerm = constant
-mulTerm = LParen constExpr RParen
+addTerm = constant (MulOp constant)?
 
-absolute = LParen constant RParen
+absolute = LBracket constant RBracket
 
-indirect = LParen registerAlias RParen
+indirect = LBracket registerAlias RBracket
 
-displacement = LParen registerAlias AddOp constant RParen
-displacement = LParen constant AddOp(+) registerAlias RParen
+displacement = LBracket registerAlias AddOp constant RBracket
+displacement = LBracket constant AddOp(+) registerAlias RBracket
 
-offset = LParen registerAlias operator registerAlias RParen
+offset = LBracket registerAlias operator registerAlias RBracket
 
 directive = segment
 directive = origin

@@ -384,7 +384,7 @@ namespace Sasm.Tokenizing
         }
 
         private bool IsCommentStart(char c) => c is CommentStart;
-        private bool IsWhitespace(char c) => c is ' ' || c is '\t';
+        private bool IsWhitespace(char c) => c is ' ' || c is '\t' || c is '\r';
         private bool IsIdentStart(char c) => IsAlpha(c) || c is CommandPrefix || c is NumberFormatHelper || c is CurrentLineAddressMarker;
         private bool IsNumeric(char c) => IsDecNumber(c);
         private bool IsBinNumber(char c) => c is '0' || c is '1';

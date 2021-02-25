@@ -3,6 +3,9 @@ namespace Sasm.Parsing
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection.Metadata.Ecma335;
+    using System.Runtime.InteropServices;
+    using System.Security.Principal;
     using System.Transactions;
     using Sasm.Parsing.ParseTree;
     using Sasm.Tokenizing;
@@ -14,64 +17,228 @@ namespace Sasm.Parsing
         {
             var tokenArray = tokens.ToArray();
             int position = 0;
-            var root = ParseConstExpr(tokenArray, ref position);
+
+            var root = ParseStart(tokenArray, ref position);
+
             var tree = new ParseTree.ParseTree(root);
             return tree;
         }
 
-        private ParseTreeNode ParseConstExpr(Token[] tokens, ref int position)
+        private ParseTreeNode ParseStart(Token[] tokens, ref int position)
         {
-            return ParseAddTerm(tokens, ref position);
-        }
-
-        private ParseTreeNode ParseAddTerm(Token[] tokens, ref int position)
-        {
-            return ParseMulTerm(tokens, ref position);
-        }
-
-        private ParseTreeNode ParseMulTerm(Token[] tokens, ref int position)
-        {
-            return ParseConstant(tokens, ref position);
-        }
-
-        private ParseTreeNode ParseConstant(Token[] tokens, ref int position)
-        {
-            var currentToken = tokens[position];
-            position++;
-            switch (currentToken.TokenType)
+            if (!TryParseLine(tokens, ref position, out var root))
             {
-                case TokenType.BinNumber:
-                    {
-                        var value = ParseNumber(currentToken.Content, 2, 2);
-                        return new Number(currentToken.Source, value);
-                    }
-                case TokenType.OctNumber:
-                    {
-                        var value = ParseNumber(currentToken.Content, 1, 8);
-                        return new Number(currentToken.Source, value);
-                    }
-                case TokenType.DecNumber:
-                    {
-                        var value = ParseNumber(currentToken.Content, 0, 10);
-                        return new Number(currentToken.Source, value);
-                    }
-                case TokenType.HexNumber:
-                    {
-                        var value = ParseNumber(currentToken.Content, 2, 16);
-                        return new Number(currentToken.Source, value);
-                    }
+                root = CreateErrorAndRecover("line", tokens, ref position);
             }
 
-            // we have to track back
-            // ??
-            position--;
-            return CreateErrorNodeUnexpectedToken(currentToken);
+            if (!IsToken(tokens, position, TokenType.EndOfFile))
+            {
+                throw new Exception("Did not parse the entire program! Found another token: " + tokens[position]);
+            }
+
+            return root;
         }
 
-        private ParseTreeNode CreateErrorNodeUnexpectedToken(Token currentToken)
+        private bool TryParseLine(Token[] tokens, ref int position, out ParseTreeNode node)
         {
-            var message = $"Encountered unexpected token \"{currentToken.TokenType}\"";
-            return new ErrorNode(currentToken.Source, message);
+            if (!TryParseConstExpr(tokens, ref position, out node))
+            {
+                node = CreateErrorAndRecover("constant expression", tokens, ref position);
+            }
+
+            if (!IsToken(tokens, position, TokenType.EndOfLine))
+            {
+                // recoveres to eol
+                node = CreateErrorAndRecover("end of line", tokens, ref position);
+            }
+
+            position++;
+
+            return true;
+        }
+
+        private bool TryParseConstExpr(Token[] tokens, ref int position, out ParseTreeNode node)
+        {
+            var hasTerm1 = TryParseAddTerm(tokens, ref position, out node);
+
+            if (!hasTerm1)
+                return false;
+
+            while (IsToken(tokens, position, TokenType.AddOp))
+            {
+                if (!TryParseOpToken(tokens[position], out var op))
+                    node = CreateErrorAndRecover("'+' or '-'", tokens, ref position);
+                else
+                {
+                    position++;
+                    if (!TryParseAddTerm(tokens, ref position, out var term2))
+                        node = CreateErrorAndRecover("addition term", tokens, ref position);
+                    else
+                        node = new BinaryOperation(
+                            op,
+                            tokens[position].Source,
+                            node,
+                            term2
+                        );
+                }
+            }
+            return true;
+        }
+
+        private bool TryParseOpToken(Token opToken, out BinaryOperation.OperationType op)
+        {
+            switch (opToken.Content)
+            {
+                case "+":
+                    op = BinaryOperation.OperationType.Add;
+                    return true;
+                case "-":
+                    op = BinaryOperation.OperationType.Sub;
+                    return true;
+                case "*":
+                    op = BinaryOperation.OperationType.Mul;
+                    return true;
+                case "/":
+                    op = BinaryOperation.OperationType.Div;
+                    return true;
+                default:
+                    op = 0;
+                    return false;
+            }
+        }
+
+        private bool TryParseAddTerm(Token[] tokens, ref int position, out ParseTreeNode node)
+        {
+            var hasTerm1 = TryParseConstant(tokens, ref position, out node);
+
+            if (!hasTerm1)
+                return false;
+
+            while (IsToken(tokens, position, TokenType.MulOp))
+            {
+                if (!TryParseOpToken(tokens[position], out var op))
+                    node = CreateErrorAndRecover("'*' or '/'", tokens, ref position);
+                else
+                {
+                    position++;
+                    if (!TryParseConstant(tokens, ref position, out var term2))
+                        node = CreateErrorAndRecover("constant", tokens, ref position);
+                    else
+                        node = new BinaryOperation(
+                            op,
+                            tokens[position].Source,
+                            node,
+                            term2
+                        );
+                }
+            }
+
+            return true;
+        }
+
+        private bool TryParseConstant(Token[] tokens, ref int position, out ParseTreeNode node)
+        {
+            if (HasMoreTokens(tokens, position))
+            {
+                var currentToken = tokens[position];
+                switch (currentToken.TokenType)
+                {
+                    case TokenType.BinNumber:
+                        {
+                            var value = ParseNumber(currentToken.Content, 2, 2);
+                            node = new Number(currentToken.Source, value);
+                            position++;
+                            return true;
+                        }
+                    case TokenType.OctNumber:
+                        {
+                            var value = ParseNumber(currentToken.Content, 1, 8);
+                            node = new Number(currentToken.Source, value);
+                            position++;
+                            return true;
+                        }
+                    case TokenType.DecNumber:
+                        {
+                            var value = ParseNumber(currentToken.Content, 0, 10);
+                            node = new Number(currentToken.Source, value);
+                            position++;
+                            return true;
+                        }
+                    case TokenType.HexNumber:
+                        {
+                            var value = ParseNumber(currentToken.Content, 2, 16);
+                            node = new Number(currentToken.Source, value);
+                            position++;
+                            return true;
+                        }
+                    case TokenType.Identifier:
+                        {
+                            node = new NamedReference(currentToken.Content, currentToken.Source);
+                            position++;
+                            return true;
+                        }
+                    case TokenType.Char:
+                        {
+                            var value = ParseCharacter(currentToken.Content);
+                            node = new Number(currentToken.Source, value);
+                            position++;
+                            return true;
+                        }
+                }
+
+                if (IsToken(tokens, position, TokenType.LParen))
+                {
+                    position++;
+                    if (TryParseConstExpr(tokens, ref position, out node))
+                    {
+                        if (ErrorHelper.IsError(node))
+                            return true;
+                        if (!IsToken(tokens, position, TokenType.RParen))
+                            node = CreateErrorAndRecover("')'", tokens, ref position);
+                        else
+                            position++;
+                    }
+                    else
+                        node = CreateErrorAndRecover("constant expression", tokens, ref position);
+                    return true;
+                }
+            }
+            node = null;
+            return false;
+        }
+
+        private char ParseCharacter(string content)
+        {
+            if (content.Length == 1)
+            {
+                return content[0];
+            }
+            else if (content.Length == 2)
+            {
+                // some escapism
+                return '\0';
+            }
+            else
+            {
+                throw new Exception("Unexpected character string of length " + content.Length);
+            }
+        }
+
+        private ParseTreeNode CreateErrorAndRecover(
+            string acceptedString,
+            Token[] tokens,
+            ref int position)
+        {
+            var currentToken = tokens[position];
+            var message = $"Expected {acceptedString} but found {tokens[position].TokenType}";
+
+            // move to after next eol
+            while (position < tokens.Length && tokens[position].TokenType != TokenType.EndOfLine)
+            {
+                position++;
+            }
+
+            return new ErrorNode(message, currentToken.Source);
         }
 
         private long ParseNumber(string text, int prefixSize, int _base)

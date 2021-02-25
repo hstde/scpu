@@ -4,6 +4,7 @@ using Sasm.Parsing;
 
 namespace Sasm.Tokenizing
 {
+    [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
     public struct Token
     {
         public TokenType TokenType { get; }
@@ -40,6 +41,11 @@ namespace Sasm.Tokenizing
         public override int GetHashCode()
         {
             return HashCode.Combine(TokenType, Content, Source);
+        }
+
+        private string GetDebuggerDisplay()
+        {
+            return ToString();
         }
     }
 }
