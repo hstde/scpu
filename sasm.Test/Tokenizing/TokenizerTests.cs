@@ -295,27 +295,29 @@ namespace Sasm.Test.Tokenizing
                         .SetName("{m}_" + testName);
                 }
 
-                TestCaseData CreateErrorCase2(string errorLabel, TokenType secondTokenType, int secondLength, TokenType thirdTokenType, int thirdLength, string testName)
+                TestCaseData CreateErrorCase2(
+                    string errorLabel,
+                    string testName,
+                    params (TokenType type, int start, int length)[] expectedTokens)
                 {
+                    var tokBuilder = expectedTokens
+                        .Select(t => new Token(t.type, 0, errorLabel, t.start, t.length))
+                        .Append(CreateEolToken(errorLabel))
+                        .Append(CreateEofToken())
+                        .ToArray();
+
                     return new TestCaseData(
                         errorLabel,
-                        new Token[]
-                        {
-                            new Token(Unknown, 0, errorLabel, 0, 1),
-                            new Token(secondTokenType, 0, errorLabel, 1, secondLength),
-                            new Token(secondTokenType, 0, errorLabel, 1 + secondLength, thirdLength),
-                            CreateEolToken(errorLabel),
-                            CreateEofToken()
-                        })
+                        tokBuilder)
                         .SetName("{m}_" + testName);
                 }
 
                 yield return CreateCase("'c'", "normal character");
-                yield return CreateCase("'\\n'", "escaped character");
-                yield return CreateCase("'\\''", "escaped char delimitor");
+                yield return CreateCase("'\\'", "char that looks like an escaped char");
 
                 yield return CreateErrorCase("'c", Register, "missing closing char delimiter");
-                yield return CreateErrorCase2("'\\'", Unknown, 1, Unknown, 1, "missing char delimitor while having escaped delimitor");
+                yield return CreateErrorCase2("'\\n'", "multiple characters", (Unknown, 0, 1), (Unknown, 1, 1), (Identifier, 2, 1), (Unknown, 3, 1));
+                yield return CreateErrorCase2("''\\'", "multiple delimitors", (Unknown, 0, 1), (TokenType.Char, 2, 1));
             }
         }
 
@@ -330,6 +332,18 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(TokenType.String, 0, text, 1, text.Length - 2),
+                            CreateEolToken(text),
+                            CreateEofToken()
+                        })
+                        .SetName("{m}_" + testName);
+                }
+                TestCaseData CreateCaseEscaped(string text, string testName)
+                {
+                    return new TestCaseData(
+                        text,
+                        new Token[]
+                        {
+                            new Token(TokenType.EscapedString, 0, text, 1, text.Length - 2),
                             CreateEolToken(text),
                             CreateEofToken()
                         })
@@ -366,11 +380,13 @@ namespace Sasm.Test.Tokenizing
                 }
 
                 yield return CreateCase("\"\"", "empty string");
-                yield return CreateCase("\"\\n\"", "escaped character string");
                 yield return CreateCase("\".\\path\\file.ext\"", "path");
+                yield return CreateCase("\".\\path\\\"", "path with backslash at end");
+                yield return CreateCaseEscaped("`escaped string`", "special escaped string");
+                yield return CreateCaseEscaped("`escaped string\\n`", "escaped string with \\n");
 
                 yield return CreateErrorCase("\"c", Register, "missing closing string delimiter");
-                yield return CreateErrorCase2("\"\\\"", Unknown, 1, Unknown, 1, "missing closing string delimiter while having escaped delimiter");
+                yield return CreateErrorCase2("`\\`", Unknown, 1, Unknown, 1, "missing closing string delimiter while having escaped delimiter");
             }
         }
 
@@ -385,7 +401,7 @@ namespace Sasm.Test.Tokenizing
                 {
                     var tokenBuilder = new List<Token>();
 
-                    foreach(var t in tokens)
+                    foreach (var t in tokens)
                         tokenBuilder.Add(new Token(t.type, 0, line, t.start, t.length));
 
                     tokenBuilder.Add(CreateEolToken(line));

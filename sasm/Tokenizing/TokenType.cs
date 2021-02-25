@@ -6,6 +6,7 @@ namespace Sasm.Tokenizing
         Mnemonic,
         LabelDefinition,
         String,
+        EscapedString,
         Char,
         DecNumber,
         HexNumber,

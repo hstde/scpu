@@ -24,6 +24,9 @@
 			"include": "#chars"
 		},
 		{
+			"include": "#escapedStrings"
+		},
+		{
 			"include": "#numbers"
 		},
 		{
@@ -75,18 +78,17 @@
 		"strings": {
 			"name": "string.quoted.double.sasm",
 			"begin": "\"",
-			"end": "\"",
-			"patterns": [
-				{
-					"name": "constant.character.escape.sasm",
-					"match": "\\\\."
-				}
-			]
+			"end": "\""
 		},
 		"chars": {
 			"name": "constant.character.sasm",
 			"begin": "'",
-			"end": "'",
+			"end": "'"
+		},
+		"escapedStrings": {
+			"name": "string.quoted.single.sasm",
+			"begin": "`",
+			"end": "`",
 			"patterns": [
 				{
 					"name": "constant.character.escape.sasm",

@@ -58,8 +58,9 @@ namespace Sasm.Tokenizing
         private const char RBracket = ']';
         private const char LabelTerminator = ':';
         private const char CommentStart = ';';
-        private const char StringDeliminator = '"';
-        private const char CharDeliminator = '\'';
+        private const char StringDelimiter = '"';
+        private const char EscapeStringDelimiter = '`';
+        private const char CharDelimiter = '\'';
         private const char StringEscapeCharacter = '\\';
         private const char SpecialBasePrefix = '0';
         private const char BinNumberMarker = 'b';
@@ -76,7 +77,7 @@ namespace Sasm.Tokenizing
         private const string TimesToken = ".times";
         private const string WarningToken = ".warning";
         private const string ConstantToken = ".const";
-        
+
         private Token? lastToken;
 
         public IReadOnlyList<Token> Tokenize(string contents)
@@ -142,25 +143,22 @@ namespace Sasm.Tokenizing
         private bool IsCharDefinition(int lineNumber, string line, ref int position, out Token? token)
         {
             token = null;
-            if (!(line[position] is CharDeliminator))
+            if (!(line[position] is CharDelimiter))
                 return false;
             if (line.Length < position + MinCharDefinitionLength)
                 return false;
 
-            bool hasEscapeCode = line[position + 1] is StringEscapeCharacter;
-            int expectedLength = hasEscapeCode ? EscapedCharDefintionLength : NormalCharDefinitionLength;
-            int expectedDelimitorOffset = hasEscapeCode ? EscapedCharClosingDelimiterOffset : NormalCharClosingDelimiterOffset;
 
-            if (line.Length < position + expectedLength)
+            if (line.Length < position + NormalCharDefinitionLength)
                 return false;
-            if (!(line[position + expectedDelimitorOffset] is CharDeliminator))
+            if (!(line[position + NormalCharClosingDelimiterOffset] is CharDelimiter))
                 return false;
 
             int start = position + 1;
 
-            position += expectedLength;
+            position += NormalCharDefinitionLength;
 
-            token = new Token(TokenType.Char, lineNumber, line, start, expectedLength - 2);
+            token = new Token(TokenType.Char, lineNumber, line, start, NormalCharDefinitionLength - 2);
             return true;
         }
 
@@ -168,30 +166,38 @@ namespace Sasm.Tokenizing
         {
             token = null;
 
-            if (!(line[position] is StringDeliminator))
+            bool isEscapedString = line[position] is EscapeStringDelimiter;
+            bool isNormalString = line[position] is StringDelimiter;
+
+            if (!isNormalString && !isEscapedString)
                 return false;
             if (line.Length < position + 2)
                 return false;
+
+            char delimiter = isEscapedString ? EscapeStringDelimiter : StringDelimiter;
 
             int start = position;
 
             bool isClosed = false;
             position++;
-            while (position < line.Length && !(line[position] is StringDeliminator))
+            while (position < line.Length && !(line[position] == delimiter))
             {
-                if (position < line.Length && line[position] is StringEscapeCharacter)
+                if (isEscapedString
+                    && position < line.Length
+                    && line[position] == StringEscapeCharacter)
                     position++;
                 position++;
             }
 
-            if (position < line.Length && line[position] is StringDeliminator)
+            if (position < line.Length && line[position] == delimiter)
                 isClosed = true;
 
             position++;
 
             if (isClosed)
             {
-                token = new Token(TokenType.String, lineNumber, line, start + 1, position - start - 2);
+                var type = isEscapedString ? EscapedString : TokenType.String;
+                token = new Token(type, lineNumber, line, start + 1, position - start - 2);
                 return true;
             }
             else
