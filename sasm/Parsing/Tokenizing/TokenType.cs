@@ -1,8 +1,9 @@
-namespace Sasm.Tokenizing
+namespace Sasm.Parsing.Tokenizing
 {
     public enum TokenType
     {
         Unknown,
+        Start,
         Mnemonic,
         LabelDefinition,
         String,

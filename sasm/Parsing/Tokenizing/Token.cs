@@ -1,9 +1,9 @@
-using System;
-using System.Diagnostics;
-using Sasm.Parsing;
-
-namespace Sasm.Tokenizing
+namespace Sasm.Parsing.Tokenizing
 {
+    using System;
+    using System.Diagnostics;
+    using Sasm.Parsing;
+
     [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
     public struct Token
     {

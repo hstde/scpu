@@ -1,9 +1,9 @@
-using System;
-using System.Diagnostics;
-using Sasm.Tokenizing;
-
 namespace Sasm.Parsing
 {
+    using System;
+    using System.Diagnostics;
+    using Sasm.Parsing.Tokenizing;
+
     [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
     public struct SourceReference
     {

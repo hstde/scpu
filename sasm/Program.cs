@@ -5,14 +5,11 @@ namespace Sasm
     using System.Collections.Generic;
     using System.Linq;
     using Sasm.Parsing;
-    using Sasm.Parsing.ParseTree;
-    using Sasm.Tokenizing;
 
     class Program
     {
         static void Main(string[] args)
         {
-            var tokenizer = new Tokenizer();
             var parser = new Parser();
             var lines = new List<string>();
 
@@ -24,61 +21,58 @@ namespace Sasm
                 line = Console.ReadLine();
                 lines.Add(line);
             }
+            var tree = parser.Parse(lines);
 
-
-            var tokens = tokenizer.Tokenize(string.Join("\n", lines));
-            var tree = parser.ParseTokenList(tokens);
-
-            PrintParseTree(lines, tree);
+            Console.WriteLine($"Parsing done, took {tree.ParseTime.TotalMilliseconds} ms");
+            PrintParseTree(tree);
             Console.WriteLine();
         }
 
-        private static void PrintParseTree(IReadOnlyList<string> lines, Parsing.ParseTree.ParseTree tree)
+        private static void PrintParseTree(ParseTree tree)
         {
-            var currentNode = tree.root;
-            int currentIndentation = 0;
-
             if (tree.HasErrors)
-                PrintError(lines, tree);
+                PrintError(tree);
             else
-                PrintNode(currentNode, currentIndentation);
+                PrintNode(tree.Root, 0);
         }
 
-        private static void PrintError(IReadOnlyList<string> lines, ParseTree tree)
+        private static void PrintError(ParseTree tree)
         {
             const string lineString = "in line {0}: ";
-            var errors = ErrorHelper.CollectErrors(tree).ToArray();
+            var errors = tree.Messages;
+            var lines = tree.SourceLines;
 
-            if (errors.Length > 1)
-                Console.WriteLine($"Programm has {errors.Length} errors.");
+            if (errors.Count > 1)
+                Console.WriteLine($"Programm has {errors.Count} errors.");
             else
                 Console.WriteLine($"Programm has 1 error.");
 
             foreach (var e in errors)
             {
-                string formattedLine = string.Format(lineString, e.sourceReference.lineNumber + 1);
-                var startOfMarker = e.sourceReference.start + formattedLine.Length;
-                var markerLength = Math.Max(e.sourceReference.length, 1);
+                string formattedLine = string.Format(lineString, e.Source.lineNumber + 1);
+                var startOfMarker = e.Source.start + formattedLine.Length;
+                var markerLength = Math.Max(e.Source.length, 1);
 
                 var marker = string.Concat(
                     new string(' ', startOfMarker),
                     new string('^', markerLength));
                 Console.WriteLine();
-                Console.WriteLine(e.ErrorMessage);
+                Console.WriteLine(e.Message);
                 Console.Write(formattedLine);
-                Console.WriteLine(lines[e.sourceReference.lineNumber]);
+                Console.WriteLine(lines[e.Source.lineNumber]);
                 Console.WriteLine(marker);
             }
         }
 
-        private static void PrintNode(Parsing.ParseTree.ParseTreeNode currentNode, int currentIndentation)
+        private static void PrintNode(ParseTreeNode currentNode, int currentIndentation)
         {
-            Console.Write(new string(' ', currentIndentation));
-            Console.WriteLine(currentNode);
+            Console.Write(new string('|', currentIndentation));
+            Console.Write('-');
+            Console.WriteLine(currentNode.Token.TokenType);
             if (currentNode.Children != null)
             {
                 foreach (var c in currentNode.Children)
-                    PrintNode(c, currentIndentation + 2);
+                    PrintNode(c, currentIndentation + 1);
             }
         }
     }

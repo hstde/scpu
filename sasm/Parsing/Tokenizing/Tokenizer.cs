@@ -1,9 +1,9 @@
-namespace Sasm.Tokenizing
+namespace Sasm.Parsing.Tokenizing
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using static Sasm.Tokenizing.TokenType;
+    using static Sasm.Parsing.Tokenizing.TokenType;
 
     public class Tokenizer
     {
@@ -80,20 +80,15 @@ namespace Sasm.Tokenizing
 
         private Token? lastToken;
 
-        public IReadOnlyList<Token> Tokenize(string contents)
+        public IReadOnlyList<Token> Tokenize(IReadOnlyList<string> lines)
         {
             var tokens = new List<Token>();
             lastToken = null;
-
-            var lines = contents.Split('\n');
 
             var lineNumber = 0;
             foreach (var line in lines)
                 TokenizeLine(lineNumber++, line, ref tokens);
 
-            // add a dummy line so we have an easier time parsing
-            // then we can always assume to have one more unexpected token with a source reference
-            AddToken(ref tokens, new Token(EndOfFile, lineNumber, "", 0, 0));
             return tokens;
         }
 

@@ -5,8 +5,6 @@ namespace Sasm.Test.Parsing
     using System.Linq;
     using NUnit.Framework;
     using Sasm.Parsing;
-    using Sasm.Parsing.ParseTree;
-    using Sasm.Tokenizing;
 
     public static class ParserTests
     {
@@ -61,12 +59,11 @@ namespace Sasm.Test.Parsing
         [TestCaseSource(nameof(ErrorCases))]
         public static void ParsesCorrectly(string input, SourceReference[] expectedLocations)
         {
-            var tokens = new Tokenizer().Tokenize(input);
-            var tree = new Parser().ParseTokenList(tokens);
+            var tree = new Parser().Parse(input);
 
-            var actualErrors = ErrorHelper.CollectErrors(tree);
+            var actualErrors = tree.Messages;
 
-            var actualLocations = actualErrors.Select(e => e.sourceReference).ToArray();
+            var actualLocations = actualErrors.Select(e => e.Source).ToArray();
 
             Assert.That(actualLocations, Is.EqualTo(expectedLocations));
         }

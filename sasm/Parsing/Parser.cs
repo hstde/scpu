@@ -2,216 +2,179 @@ namespace Sasm.Parsing
 {
     using System;
     using System.Collections.Generic;
+    using System.Data;
     using System.Linq;
-    using System.Reflection.Metadata.Ecma335;
-    using System.Runtime.InteropServices;
-    using System.Security.Principal;
-    using System.Transactions;
-    using Sasm.Parsing.ParseTree;
-    using Sasm.Tokenizing;
+    using Sasm.Parsing.Tokenizing;
 
     public class Parser
     {
-        // takes an array of tokens and produces a ParseTree
-        public ParseTree.ParseTree ParseTokenList(IEnumerable<Token> tokens)
+        public ParseTree Parse(string input)
         {
-            var tokenArray = tokens.ToArray();
-            int position = 0;
-
-            var root = ParseStart(tokenArray, ref position);
-
-            var tree = new ParseTree.ParseTree(root);
-            return tree;
+            return Parse(new[] { input });
         }
 
-        private ParseTreeNode ParseStart(Token[] tokens, ref int position)
+        public ParseTree Parse(IReadOnlyList<string> lines)
         {
-            var lines = new List<ParseTreeNode>();
+            return Parse(lines, "<input>");
+        }
 
-            while (!IsToken(tokens, position, TokenType.EndOfFile))
+        public ParseTree Parse(IReadOnlyList<string> lines, string filename)
+        {
+            var tokens = new Tokenizer().Tokenize(lines);
+            var context = new ParseContext(lines, filename, tokens);
+
+            context.ParseWatch.Start();
+            ParseStart(context);
+            context.ParseWatch.Stop();
+
+            return new ParseTree(context);
+        }
+
+        private void ParseStart(ParseContext context)
+        {
+            var startNode = new ParseTreeNode(new Token(TokenType.Start, 0, "", 0));
+
+            while (!IsToken(context, TokenType.EndOfFile))
             {
-                if (!TryParseLine(tokens, ref position, out var line))
+                context.State = ParserState.Parsing;
+                if (!TryParseLine(context))
                 {
-                    line = CreateErrorAndRecover("line", tokens, ref position);
-                    position++;
+                    if (!IsRecovering(context))
+                        CreateErrorAndRecover("line", context);
+                    context.MoveNextToken();
                 }
-                lines.Add(line);
+                else
+                    startNode.AddChild(context.CurrentNode);
             }
 
-            if (!IsToken(tokens, position, TokenType.EndOfFile))
+            if (!IsToken(context, TokenType.EndOfFile))
             {
-                throw new Exception("Did not parse the entire program! Found another token: " + tokens[position]);
+                throw new Exception("Did not parse the entire program! Found another token: " + context.CurrentToken);
             }
 
-            var root = new StartNode(new SourceReference(0, 0, 0), lines);
-            return root;
+            context.State = ParserState.Done;
+            context.CurrentNode = startNode;
         }
 
-        private bool TryParseLine(Token[] tokens, ref int position, out ParseTreeNode node)
+        private bool TryParseLine(ParseContext context)
         {
-            if (!TryParseConstExpr(tokens, ref position, out node))
+            if (!TryParseConstExpr(context))
             {
-                node = CreateErrorAndRecover("constant expression", tokens, ref position);
+                if (!IsRecovering(context))
+                    CreateErrorAndRecover("constant expression", context);
+                return false;
+
             }
 
-            if (!IsToken(tokens, position, TokenType.EndOfLine))
+            if (!IsToken(context, TokenType.EndOfLine))
             {
                 // recoveres to eol
-                node = CreateErrorAndRecover("end of line", tokens, ref position);
+                CreateErrorAndRecover("end of line", context);
+                return false;
             }
 
-            position++;
+            context.MoveNextToken();
 
             return true;
         }
 
-        private bool TryParseConstExpr(Token[] tokens, ref int position, out ParseTreeNode node)
+        private bool TryParseConstExpr(ParseContext context)
         {
-            var hasTerm1 = TryParseAddTerm(tokens, ref position, out node);
-
-            if (!hasTerm1)
+            if (!TryParseAddTerm(context))
                 return false;
 
-            while (IsToken(tokens, position, TokenType.AddOp))
+            while (IsToken(context, TokenType.AddOp))
             {
-                if (!TryParseOpToken(tokens[position], out var op))
-                    node = CreateErrorAndRecover("'+' or '-'", tokens, ref position);
-                else
-                {
-                    position++;
-                    if (!TryParseAddTerm(tokens, ref position, out var term2))
-                        node = CreateErrorAndRecover("addition term", tokens, ref position);
-                    else
-                        node = new BinaryOperation(
-                            op,
-                            tokens[position].Source,
-                            node,
-                            term2
-                        );
-                }
-            }
-            return true;
-        }
+                var addNode = new ParseTreeNode(context.CurrentToken);
+                addNode.AddChild(context.CurrentNode);
 
-        private bool TryParseOpToken(Token opToken, out BinaryOperation.OperationType op)
-        {
-            switch (opToken.Content)
-            {
-                case "+":
-                    op = BinaryOperation.OperationType.Add;
-                    return true;
-                case "-":
-                    op = BinaryOperation.OperationType.Sub;
-                    return true;
-                case "*":
-                    op = BinaryOperation.OperationType.Mul;
-                    return true;
-                case "/":
-                    op = BinaryOperation.OperationType.Div;
-                    return true;
-                default:
-                    op = 0;
+                context.MoveNextToken();
+
+                if (!TryParseAddTerm(context))
+                {
+                    if (!IsRecovering(context))
+                        CreateErrorAndRecover("addition term", context);
                     return false;
-            }
-        }
-
-        private bool TryParseAddTerm(Token[] tokens, ref int position, out ParseTreeNode node)
-        {
-            var hasTerm1 = TryParseConstant(tokens, ref position, out node);
-
-            if (!hasTerm1)
-                return false;
-
-            while (IsToken(tokens, position, TokenType.MulOp))
-            {
-                if (!TryParseOpToken(tokens[position], out var op))
-                    node = CreateErrorAndRecover("'*' or '/'", tokens, ref position);
+                }
                 else
                 {
-                    position++;
-                    if (!TryParseConstant(tokens, ref position, out var term2))
-                        node = CreateErrorAndRecover("constant", tokens, ref position);
-                    else
-                        node = new BinaryOperation(
-                            op,
-                            tokens[position].Source,
-                            node,
-                            term2
-                        );
+                    addNode.AddChild(context.CurrentNode);
+                    context.CurrentNode = addNode;
                 }
             }
 
             return true;
         }
 
-        private bool TryParseConstant(Token[] tokens, ref int position, out ParseTreeNode node)
+        private bool TryParseAddTerm(ParseContext context)
         {
-            if (HasMoreTokens(tokens, position))
+            if (!TryParseConstant(context))
+                return false;
+
+            while (IsToken(context, TokenType.MulOp))
             {
-                var currentToken = tokens[position];
-                switch (currentToken.TokenType)
+                var mulNode = new ParseTreeNode(context.CurrentToken);
+                mulNode.AddChild(context.CurrentNode);
+
+                context.MoveNextToken();
+
+                if (!TryParseConstant(context))
+                {
+                    if (!IsRecovering(context))
+                        CreateErrorAndRecover("constant", context);
+                    return false;
+                }
+                else
+                    mulNode.AddChild(context.CurrentNode);
+                context.CurrentNode = mulNode;
+            }
+
+            return true;
+        }
+
+        private bool TryParseConstant(ParseContext context)
+        {
+            if (context.HasCurrentToken)
+            {
+                switch (context.CurrentToken.TokenType)
                 {
                     case TokenType.BinNumber:
-                        {
-                            var value = ParseNumber(currentToken.Content, 2, 2);
-                            node = new Number(currentToken.Source, value);
-                            position++;
-                            return true;
-                        }
                     case TokenType.OctNumber:
-                        {
-                            var value = ParseNumber(currentToken.Content, 1, 8);
-                            node = new Number(currentToken.Source, value);
-                            position++;
-                            return true;
-                        }
                     case TokenType.DecNumber:
-                        {
-                            var value = ParseNumber(currentToken.Content, 0, 10);
-                            node = new Number(currentToken.Source, value);
-                            position++;
-                            return true;
-                        }
                     case TokenType.HexNumber:
-                        {
-                            var value = ParseNumber(currentToken.Content, 2, 16);
-                            node = new Number(currentToken.Source, value);
-                            position++;
-                            return true;
-                        }
                     case TokenType.Identifier:
-                        {
-                            node = new NamedReference(currentToken.Content, currentToken.Source);
-                            position++;
-                            return true;
-                        }
                     case TokenType.Char:
                         {
-                            var value = ParseCharacter(currentToken.Content);
-                            node = new Number(currentToken.Source, value);
-                            position++;
+                            context.CurrentNode = new ParseTreeNode(context.CurrentToken);
+                            context.MoveNextToken();
                             return true;
                         }
                 }
 
-                if (IsToken(tokens, position, TokenType.LParen))
+                if (IsToken(context, TokenType.LParen))
                 {
-                    position++;
-                    if (TryParseConstExpr(tokens, ref position, out node))
+                    context.MoveNextToken();
+                    if (TryParseConstExpr(context))
                     {
-                        if (ErrorHelper.IsError(node))
-                            return true;
-                        if (!IsToken(tokens, position, TokenType.RParen))
-                            node = CreateErrorAndRecover("')'", tokens, ref position);
+                        if (!IsToken(context, TokenType.RParen))
+                        {
+                            CreateErrorAndRecover("')'", context);
+                            return false;
+                        }
                         else
-                            position++;
+                        {
+                            context.MoveNextToken();
+                            return true;
+                        }
                     }
                     else
-                        node = CreateErrorAndRecover("constant expression", tokens, ref position);
-                    return true;
+                    {
+                        if (!IsRecovering(context))
+                            CreateErrorAndRecover("constant expression", context);
+                        return false;
+                    }
                 }
             }
-            node = null;
             return false;
         }
 
@@ -232,21 +195,21 @@ namespace Sasm.Parsing
             }
         }
 
-        private ParseTreeNode CreateErrorAndRecover(
+        private void CreateErrorAndRecover(
             string acceptedString,
-            Token[] tokens,
-            ref int position)
+            ParseContext context)
         {
-            var currentToken = tokens[position];
-            var message = $"Expected {acceptedString} but found {tokens[position].TokenType}";
+            var currentToken = context.CurrentToken;
+            var message = $"Expected {acceptedString} but found {currentToken.TokenType}";
+
+            context.State = ParserState.Recovering;
 
             // move to after next eol
-            while (position < tokens.Length && tokens[position].TokenType != TokenType.EndOfLine)
+            while (context.MoveNextToken() && context.CurrentToken.TokenType != TokenType.EndOfLine)
             {
-                position++;
             }
 
-            return new ErrorNode(message, currentToken.Source);
+            context.AddError(currentToken.Source, message);
         }
 
         private long ParseNumber(string text, int prefixSize, int _base)
@@ -256,11 +219,10 @@ namespace Sasm.Parsing
             return Convert.ToInt64(text, _base);
         }
 
-        private bool IsToken(Token[] tokens, int position, TokenType expected)
-            => HasMoreTokens(tokens, position) && tokens[position].TokenType == expected;
-        private bool IsToken(Token[] tokens, int position, params TokenType[] expected)
-            => HasMoreTokens(tokens, position) && expected.Contains(tokens[position].TokenType);
-        private bool HasMoreTokens(Token[] tokens, int position, int count = 1)
-            => position + count <= tokens.Length;
+        public bool IsRecovering(ParseContext context) => context.State == ParserState.Recovering;
+        private bool IsToken(ParseContext context, TokenType expected)
+            => context.CurrentToken.TokenType == expected;
+        private bool IsToken(ParseContext context, params TokenType[] expected)
+            => context.HasCurrentToken && expected.Contains(context.CurrentToken.TokenType);
     }
 }

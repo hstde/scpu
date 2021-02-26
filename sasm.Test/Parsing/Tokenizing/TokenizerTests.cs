@@ -1,12 +1,12 @@
-namespace Sasm.Test.Tokenizing
+namespace Sasm.Test.Parsing.Tokenizing
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using Microsoft.VisualStudio.TestPlatform.ObjectModel;
     using NUnit.Framework;
-    using Sasm.Tokenizing;
-    using static Sasm.Tokenizing.TokenType;
+    using Sasm.Parsing.Tokenizing;
+    using static Sasm.Parsing.Tokenizing.TokenType;
 
     public class TokenizerTests
     {
@@ -21,8 +21,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(type, 0, text, 0, text.Length),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -31,8 +30,7 @@ namespace Sasm.Test.Tokenizing
                 yield return new TestCaseData(
                     emptyLine,
                     new Token[] {
-                        CreateEolToken(emptyLine),
-                        CreateEofToken()
+                        CreateEolToken(emptyLine)
                     })
                     .SetName("{m}_Generates a valid End of line token on empty input");
 
@@ -57,8 +55,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(LabelDefinition, 0, label, 0, label.Length - 1),
-                            CreateEolToken(label),
-                            CreateEofToken()
+                            CreateEolToken(label)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -71,8 +68,7 @@ namespace Sasm.Test.Tokenizing
                         {
                             new Token(firstTokenType, 0, errorLabel, 0, errorLabel.Length - 1),
                             new Token(Unknown, 0, errorLabel, errorLabel.Length - 1, 1),
-                            CreateEolToken(errorLabel),
-                            CreateEofToken()
+                            CreateEolToken(errorLabel)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -111,8 +107,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(numberType, 0, number, start, number.Length - start),
-                            CreateEolToken(number),
-                            CreateEofToken()
+                            CreateEolToken(number)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -150,8 +145,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Identifier, 0, text, 0, text.Length),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -177,8 +171,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Mnemonic, 0, text, 0, text.Length),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -200,8 +193,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Register, 0, text, 0, text.Length),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -223,8 +215,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(type, 0, text, 0, text.Length),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -252,8 +243,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(Comment, 0, text, 0, text.Length),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -275,8 +265,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(TokenType.Char, 0, text, 1, text.Length - 2),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -289,8 +278,7 @@ namespace Sasm.Test.Tokenizing
                         {
                             new Token(Unknown, 0, errorLabel, 0, 1),
                             new Token(secondTokenType, 0, errorLabel, 1, errorLabel.Length - 1),
-                            CreateEolToken(errorLabel),
-                            CreateEofToken()
+                            CreateEolToken(errorLabel)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -303,7 +291,6 @@ namespace Sasm.Test.Tokenizing
                     var tokBuilder = expectedTokens
                         .Select(t => new Token(t.type, 0, errorLabel, t.start, t.length))
                         .Append(CreateEolToken(errorLabel))
-                        .Append(CreateEofToken())
                         .ToArray();
 
                     return new TestCaseData(
@@ -332,8 +319,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(TokenType.String, 0, text, 1, text.Length - 2),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -344,8 +330,7 @@ namespace Sasm.Test.Tokenizing
                         new Token[]
                         {
                             new Token(TokenType.EscapedString, 0, text, 1, text.Length - 2),
-                            CreateEolToken(text),
-                            CreateEofToken()
+                            CreateEolToken(text)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -358,8 +343,7 @@ namespace Sasm.Test.Tokenizing
                         {
                             new Token(Unknown, 0, errorLabel, 0, 1),
                             new Token(secondTokenType, 0, errorLabel, 1, errorLabel.Length - 1),
-                            CreateEolToken(errorLabel),
-                            CreateEofToken()
+                            CreateEolToken(errorLabel)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -373,8 +357,7 @@ namespace Sasm.Test.Tokenizing
                             new Token(Unknown, 0, errorLabel, 0, 1),
                             new Token(secondTokenType, 0, errorLabel, 1, secondLength),
                             new Token(secondTokenType, 0, errorLabel, 1 + secondLength, thirdLength),
-                            CreateEolToken(errorLabel),
-                            CreateEofToken()
+                            CreateEolToken(errorLabel)
                         })
                         .SetName("{m}_" + testName);
                 }
@@ -405,7 +388,6 @@ namespace Sasm.Test.Tokenizing
                         tokenBuilder.Add(new Token(t.type, 0, line, t.start, t.length));
 
                     tokenBuilder.Add(CreateEolToken(line));
-                    tokenBuilder.Add(CreateEofToken());
 
                     return new TestCaseData(
                         line,
@@ -460,7 +442,7 @@ namespace Sasm.Test.Tokenizing
         public void TokenizesCorrectly(string content, Token[] expectedTokens)
         {
             var tokenizer = new Tokenizer();
-            var actualTokens = tokenizer.Tokenize(content).ToArray();
+            var actualTokens = tokenizer.Tokenize(new[] { content }).ToArray();
 
             Assert.That(actualTokens, Is.EqualTo(expectedTokens));
         }
@@ -468,11 +450,6 @@ namespace Sasm.Test.Tokenizing
         private static Token CreateEolToken(string line, int lineNumber = 0)
         {
             return new Token(EndOfLine, lineNumber, line, line.Length, 0);
-        }
-
-        private static Token CreateEofToken(int lineNumber = 1)
-        {
-            return new Token(EndOfFile, lineNumber, "", 0, 0);
         }
     }
 }
