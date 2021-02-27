@@ -494,7 +494,7 @@ namespace Sasm.Parsing
             string acceptedString,
             ParseContext context)
         {
-            if (context.State is ParserState.Recovering || context.State is ParserState.Trying)
+            if (context.State is ParserState.Recovering || context.State is ParserState.Previewing)
                 return;
 
             var currentToken = context.CurrentToken;

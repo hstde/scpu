@@ -70,7 +70,7 @@ namespace Sasm.Parsing
 
         public void StoreTokenPosition()
         {
-            State = ParserState.Trying;
+            State = ParserState.Previewing;
             if (tokenPositionStack is null)
                 tokenPositionStack = new Stack<int>();
             tokenPositionStack.Push(tokenPosition);
