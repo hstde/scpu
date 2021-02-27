@@ -14,9 +14,9 @@ ld iy, 0b1001_0101_0000_1101
 ld a, $
 ld b, -2
 ld c, 'a'
-ld d, '\0'
+ld d, '\'
 
-.const.section.1:
+.const.segment.1:
 
 ;comment 
 ld [1], 3
