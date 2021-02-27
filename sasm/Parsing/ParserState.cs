@@ -4,6 +4,7 @@ namespace Sasm.Parsing
     {
         Init,
         Parsing,
+        Trying,
         Recovering,
         Done
     }

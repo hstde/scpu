@@ -22,13 +22,17 @@ operand = offset
 registerAlias = Register
 registerAlias = Identifier
 
-constant = Number
-constant = Identifier
-constant = Char
+constant = literal
 constant = constExpr
 
+literal = Number
+literal = Identifier
+literal = Char
+
 constExpr = addTerm (AddOp addTerm)?
-addTerm = constant (MulOp constant)?
+addTerm = mulTerm (MulOp mulTerm)?
+mulTerm = literal
+mulTerm = LParen constExpr RParen
 
 absolute = LBracket constant RBracket
 

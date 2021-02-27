@@ -68,7 +68,7 @@ namespace Sasm
         {
             Console.Write(new string('|', currentIndentation));
             Console.Write('-');
-            Console.WriteLine(currentNode.Token.TokenType);
+            Console.WriteLine($"{currentNode.Token.TokenType}({currentNode.Term})");
             if (currentNode.Children != null)
             {
                 foreach (var c in currentNode.Children)

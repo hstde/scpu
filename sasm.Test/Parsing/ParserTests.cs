@@ -15,15 +15,20 @@ namespace Sasm.Test.Parsing
                 TestCaseData CreateCase(string input, string name)
                     => new TestCaseData(input, Array.Empty<SourceReference>()).SetName("{m}_" + name);
 
-                yield return CreateCase("1", "one number");
+                yield return CreateCase("ab 1", "identifier number");
                 yield return CreateCase("abc", "one identifier");
-                yield return CreateCase("1+1", "two number addition");
-                yield return CreateCase("abc+abc", "two ident addition");
-                yield return CreateCase("1+-1", "negative number");
-                yield return CreateCase("1+'a'", "addition with a character");
-                yield return CreateCase("1+2*3", "addition and multiplication");
-                yield return CreateCase("2*(1+3)", "subexpressions");
-                yield return CreateCase("1+(2+abc)", "subexpression with ident");
+                yield return CreateCase("ab 1+1", "identifier two number addition");
+                yield return CreateCase("ab abc+abc", "identifier two ident addition");
+                yield return CreateCase("ab 1+-1", "identifier negative number addition");
+                yield return CreateCase("ab 1+'a'", "identifier addition with a character");
+                yield return CreateCase("ab 1+2*3", "identifier addition and multiplication");
+                yield return CreateCase("ab 2*(1+3)", "identifier subexpressions");
+                yield return CreateCase("ab 1+(2+abc)", "identifier subexpression with ident");
+                yield return CreateCase("ld a, 1", "mnemonic with two arguments");
+                yield return CreateCase("", "empty expression");
+                yield return CreateCase("ld a, [de]", "load a indirect de");
+                yield return CreateCase("ld [ix+1], b", "load displacement ix b");
+                yield return CreateCase("lea ix, [iy+hl]", "load effective address to ix of iy offset hl");
             }
         }
 
@@ -44,14 +49,13 @@ namespace Sasm.Test.Parsing
 
 
                 yield return CreateCase("bc", "register not expected", (0, 2));
-                yield return CreateCase("1+bc", "register not expected with addition", (2, 2));
-                yield return CreateCase("bc+1", "register not expected first argument", (0, 2));
-                yield return CreateCase("ld bc", "mnemonic not expected", (0, 2));
-                yield return CreateCase("1+(1+bc)", "register not expected in subexpression", (5, 2));
-                yield return CreateCase("()", "missing expression in parentheses", (1, 1));
-                yield return CreateCase("", "missing expression", (0, 0));
-                yield return CreateCase("(1+1", "missing closing parenthesis", (4, 0));
-                yield return CreateCase("1+2+3)", "missing opening parenthesis", (5, 1));
+                yield return CreateCase("ab 1+bc", "register not expected with addition", (3, 1));
+                yield return CreateCase("ab bc+1", "addition not expected", (5, 1));
+                yield return CreateCase("12", "number not expected", (0, 2));
+                yield return CreateCase("ab 1+(1+bc)", "register not expected in subexpression", (3, 1));
+                yield return CreateCase("ab ()", "missing expression in parentheses", (3, 1));
+                yield return CreateCase("ab (1+1", "missing closing parenthesis", (3, 1));
+                yield return CreateCase("ab 1+2+3)", "missing opening parenthesis", (8, 1));
             }
         }
 
