@@ -3,8 +3,6 @@ namespace Sasm.Parsing.Tokenizing
     public enum TokenType
     {
         Unknown,
-        Start,
-        Line,
         Mnemonic,
         LabelDefinition,
         String,

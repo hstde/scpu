@@ -15,19 +15,19 @@ namespace Sasm.Test.Parsing
             {
                 TestCaseData CreateCaseSingleLine(string input, string name, params TestNode[] nodes)
                 {
-                    var startNode = new TestNode(TokenType.Start);
-                    var line = new TestNode(TokenType.Line);
+                    var startNode = new TestNode(ParseTreeNodeType.Start);
+                    var line = new TestNode(ParseTreeNodeType.Line);
                     line.children.AddRange(nodes);
                     startNode.children.Add(line);
                     return new TestCaseData(input, startNode).SetName("{m}_" + name);
                 }
                 TestCaseData CreateCaseMultiLine(string input, string name, params TestNode[] nodes)
                 {
-                    var startNode = new TestNode(TokenType.Start);
+                    var startNode = new TestNode(ParseTreeNodeType.Start);
                     startNode.children.AddRange(nodes);
                     return new TestCaseData(input, startNode).SetName("{m}_" + name);
                 }
-                TestNode Node(TokenType type, params TestNode[] children)
+                TestNode Node(ParseTreeNodeType type, params TestNode[] children)
                 {
                     var node = new TestNode(type);
                     node.children.AddRange(children);
@@ -37,7 +37,13 @@ namespace Sasm.Test.Parsing
                 yield return CreateCaseSingleLine(
                     "ab 1",
                     "identifier number",
-                    Node(TokenType.Identifier, Node(TokenType.DecNumber)));
+                    Node(ParseTreeNodeType.Instruction, 
+                        Node(ParseTreeNodeType.Operation, 
+                            Node(ParseTreeNodeType.Op,
+                                Node(ParseTreeNodeType.Terminal)),
+                            Node(ParseTreeNodeType.Terminal),
+                            Node(ParseTreeNodeType.Operand,
+                                Node(ParseTreeNodeType.Constant)))));
                 yield return CreateCaseSingleLine(
                     "abc",
                     "one identifier",
@@ -264,7 +270,7 @@ namespace Sasm.Test.Parsing
             Assert.Multiple(() =>
             {
                 Assert.That(
-                    actual.Token.TokenType,
+                    actual.NodeType,
                     Is.EqualTo(expected.type),
                     $"Tokentype differs on node ({nodePath})!");
                 Assert.That(
@@ -285,18 +291,12 @@ namespace Sasm.Test.Parsing
         public class TestNode
         {
             public List<TestNode> children;
-            public TokenType type;
+            public ParseTreeNodeType type;
 
-            public TestNode(TokenType type)
+            public TestNode(ParseTreeNodeType type)
             {
                 this.type = type;
                 this.children = new List<TestNode>();
-            }
-
-            public TestNode(ParseTreeNode node)
-            {
-                this.type = node.Token.TokenType;
-                this.children = new List<TestNode>(node.Children.Count);
             }
         }
     }

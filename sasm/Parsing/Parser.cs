@@ -2,10 +2,9 @@ namespace Sasm.Parsing
 {
     using System;
     using System.Collections.Generic;
-    using System.Data;
     using System.Linq;
-    using System.Reflection.Metadata.Ecma335;
     using Sasm.Parsing.Tokenizing;
+    using NT = Sasm.Parsing.ParseTreeNodeType;
 
     public class Parser
     {
@@ -33,7 +32,7 @@ namespace Sasm.Parsing
 
         private void ParseStart(ParseContext context)
         {
-            var startNode = new ParseTreeNode(new Token(TokenType.Start, 0, "", 0));
+            var startNode = context.CreateNonTerminal(NT.Start);
             context.CurrentNode = startNode;
 
             while (!IsToken(context, TokenType.EndOfFile))
@@ -60,11 +59,12 @@ namespace Sasm.Parsing
 
         private bool TryParseLine(ParseContext context)
         {
-            var line = new ParseTreeNode(new Token(TokenType.Line, context.CurrentToken.Source.lineNumber, "", 0));
+            var line = context.CreateNonTerminal(NT.Line);
+            context.CurrentNode = line;
 
             if (IsToken(context, TokenType.LabelDefinition))
             {
-                line.AddChild(context.ConsumeToken());
+                line.AddChild(context.CreateTerminal());
             }
 
             if (TryParseInstruction(context))
@@ -74,7 +74,7 @@ namespace Sasm.Parsing
 
             if (IsToken(context, TokenType.Comment))
             {
-                line.AddChild(context.ConsumeToken());
+                line.AddChild(context.CreateTerminal());
             }
 
             if (!IsToken(context, TokenType.EndOfLine))
@@ -93,46 +93,18 @@ namespace Sasm.Parsing
 
         private bool TryParseInstruction(ParseContext context)
         {
-            if (TryParseOperation(context))
-                return true;
-            if (TryParseDirective(context))
-                return true;
-
-            return false;
+            return TryParseDirective(context) || TryParseOperation(context);
         }
 
         private bool TryParseDirective(ParseContext context)
         {
-            if (TryParseSegmentDirective(context))
-            {
-                return true;
-            }
-            if (TryParseOriginDirective(context))
-            {
-                return true;
-            }
-            if (TryParseIncludeDirective(context))
-            {
-                return true;
-            }
-            if (TryParseTimesDirective(context))
-            {
-                return true;
-            }
-            if (TryParseDataDirective(context))
-            {
-                return true;
-            }
-            if (TryParseWarningDirective(context))
-            {
-                return true;
-            }
-            if (TryParseConstDirective(context))
-            {
-                return true;
-            }
-
-            return false;
+            return TryParseSegmentDirective(context)
+                || TryParseOriginDirective(context)
+                || TryParseIncludeDirective(context)
+                || TryParseTimesDirective(context)
+                || TryParseDataDirective(context)
+                || TryParseWarningDirective(context)
+                || TryParseConstDirective(context);
         }
 
         private bool TryParseConstDirective(ParseContext context)
@@ -140,7 +112,8 @@ namespace Sasm.Parsing
             if (!IsToken(context, TokenType.ConstantDeclaration))
                 return false;
 
-            var directive = context.ConsumeToken();
+            var directive = context.CreateNonTerminal(NT.ConstDirective);
+            directive.AddChild(context.CreateTerminal());
 
             if (!IsToken(context, TokenType.Identifier))
             {
@@ -148,7 +121,7 @@ namespace Sasm.Parsing
                 return false;
             }
 
-            directive.AddChild(context.ConsumeToken());
+            directive.AddChild(context.CreateTerminal());
 
             if (!TryParseDataConstant(context))
             {
@@ -164,17 +137,28 @@ namespace Sasm.Parsing
 
         private bool TryParseDataConstant(ParseContext context)
         {
+            var dataconstant = context.CreateNonTerminal(NT.DataConstant);
+            context.EnterPreview();
+
             switch (context.CurrentToken.TokenType)
             {
                 case TokenType.String:
                 case TokenType.EscapedString:
-                    context.ConsumeToken();
+                    context.AcceptPreview();
+                    dataconstant.AddChild(context.CreateTerminal());
+                    context.CurrentNode = dataconstant;
                     return true;
             }
 
             if (TryParseConstant(context))
+            {
+                context.AcceptPreview();
+                dataconstant.AddChild(context.CurrentNode);
+                context.CurrentNode = dataconstant;
                 return true;
+            }
 
+            context.AbortPreview();
             return false;
         }
 
@@ -183,7 +167,9 @@ namespace Sasm.Parsing
             if (!IsToken(context, TokenType.WarningCommand))
                 return false;
 
-            var directive = context.ConsumeToken();
+            var directive = context.CreateNonTerminal(NT.Warning);
+            directive.AddChild(context.CreateTerminal());
+
             if (!TryParseDataConstant(context))
             {
                 CreateErrorAndRecover("dataconstant in warning directive", context);
@@ -194,7 +180,7 @@ namespace Sasm.Parsing
 
             while (IsToken(context, TokenType.Separator))
             {
-                directive.AddChild(context.ConsumeToken());
+                directive.AddChild(context.CreateTerminal());
                 if (!TryParseDataConstant(context))
                 {
                     CreateErrorAndRecover("dataconstant after separator in warning directive", context);
@@ -213,7 +199,9 @@ namespace Sasm.Parsing
             if (!IsToken(context, TokenType.DataDefinition))
                 return false;
 
-            var directive = context.ConsumeToken();
+            var directive = context.CreateNonTerminal(NT.DataDirective);
+            directive.AddChild(context.CreateTerminal());
+
             if (!TryParseDataConstant(context))
             {
                 CreateErrorAndRecover("data constant in data directive", context);
@@ -224,7 +212,7 @@ namespace Sasm.Parsing
 
             while (IsToken(context, TokenType.Separator))
             {
-                directive.AddChild(context.ConsumeToken());
+                directive.AddChild(context.CreateTerminal());
                 if (!TryParseDataConstant(context))
                 {
                     CreateErrorAndRecover("dataconstant after separator in data directive", context);
@@ -243,7 +231,9 @@ namespace Sasm.Parsing
             if (!IsToken(context, TokenType.TimesStatement))
                 return false;
 
-            var directive = context.ConsumeToken();
+            var directive = context.CreateNonTerminal(NT.TimesDirective);
+            directive.AddChild(context.CreateTerminal());
+
             if (!TryParseConstant(context))
             {
                 CreateErrorAndRecover("constant after times command", context);
@@ -252,24 +242,21 @@ namespace Sasm.Parsing
 
             directive.AddChild(context.CurrentNode);
 
-            context.StoreTokenPosition();
             if (TryParseDataDirective(context))
             {
-                context.DropStoredTokenPosition();
+                context.AcceptPreview();
                 directive.AddChild(context.CurrentNode);
                 context.CurrentNode = directive;
                 return true;
             }
-            context.RestoreTokenPosition();
-            context.StoreTokenPosition();
             if (TryParseOperation(context))
             {
-                context.DropStoredTokenPosition();
+                context.AcceptPreview();
                 directive.AddChild(context.CurrentNode);
                 context.CurrentNode = directive;
                 return true;
             }
-            context.DropStoredTokenPosition();
+
             CreateErrorAndRecover("data directive or operation after times", context);
             return false;
         }
@@ -277,19 +264,18 @@ namespace Sasm.Parsing
         private bool TryParseIncludeDirective(ParseContext context)
         {
             if (!IsToken(context, TokenType.Include))
-            {
                 return false;
-            }
 
-            var directive = context.ConsumeToken();
+            var directive = context.CreateNonTerminal(NT.IncludeDirective);
+            directive.AddChild(context.CreateTerminal());
 
-            if(!IsToken(context, TokenType.String))
+            if (!IsToken(context, TokenType.String))
             {
                 CreateErrorAndRecover("string after include", context);
                 return false;
             }
 
-            directive.AddChild(context.ConsumeToken());
+            directive.AddChild(context.CreateTerminal());
 
             context.CurrentNode = directive;
             return true;
@@ -302,7 +288,8 @@ namespace Sasm.Parsing
                 return false;
             }
 
-            var directive = context.ConsumeToken();
+            var directive = context.CreateNonTerminal(NT.OriginDirective);
+            directive.AddChild(context.CreateTerminal());
 
             if (!TryParseConstant(context))
             {
@@ -319,11 +306,10 @@ namespace Sasm.Parsing
         private bool TryParseSegmentDirective(ParseContext context)
         {
             if (!IsToken(context, TokenType.Segment))
-            {
                 return false;
-            }
 
-            var directive = context.ConsumeToken();
+            var directive = context.CreateNonTerminal(NT.SegmentDirective);
+            directive.AddChild(context.CreateTerminal());
 
             if (!IsToken(context, TokenType.Identifier))
             {
@@ -331,9 +317,9 @@ namespace Sasm.Parsing
                 return false;
             }
 
-            directive.AddChild(context.ConsumeToken());
+            directive.AddChild(context.CreateTerminal());
 
-            if(TryParseConstant(context))
+            if (TryParseConstant(context))
             {
                 directive.AddChild(context.CurrentNode);
             }
@@ -344,62 +330,85 @@ namespace Sasm.Parsing
 
         private bool TryParseConstExpr(ParseContext context)
         {
+            var constExpr = context.CreateNonTerminal(NT.ConstExpression);
+            context.EnterPreview();
+
             if (!TryParseAddTerm(context))
-                return false;
-
-            while (IsToken(context, TokenType.AddOp))
             {
-                var term1 = context.CurrentNode;
-                var addNode = context.ConsumeToken();
-                addNode.AddChild(term1);
-
-                if (!TryParseAddTerm(context))
-                {
-                    CreateErrorAndRecover("addition term", context);
-                    return false;
-                }
-                else
-                {
-                    addNode.AddChild(context.CurrentNode);
-                    context.CurrentNode = addNode;
-                }
+                context.AbortPreview();
+                return false;
             }
+
+            constExpr.AddChild(context.CurrentNode);
+
+            if (!IsToken(context, TokenType.AddOp))
+            {
+                context.AcceptPreview();
+                context.CurrentNode = constExpr;
+                return true;
+            }
+
+            constExpr.AddChild(context.CreateTerminal());
+
+            if (!TryParseAddTerm(context))
+            {
+                context.AbortPreview();
+                return false;
+            }
+
+            context.AcceptPreview();
+            constExpr.AddChild(context.CurrentNode);
+            context.CurrentNode = constExpr;
 
             return true;
         }
 
         private bool TryParseAddTerm(ParseContext context)
         {
+            var addTerm = context.CreateNonTerminal(NT.AddTerm);
+
+            context.EnterPreview();
             if (!TryParseMulTerm(context))
-                return false;
-
-            while (IsToken(context, TokenType.MulOp))
             {
-                var term1 = context.CurrentNode;
-                var mulNode = context.ConsumeToken();
-                mulNode.AddChild(term1);
-
-                if (!TryParseMulTerm(context))
-                {
-                    CreateErrorAndRecover("constant", context);
-                    return false;
-                }
-                else
-                    mulNode.AddChild(context.CurrentNode);
-                context.CurrentNode = mulNode;
+                context.AbortPreview();
+                return false;
             }
+
+            addTerm.AddChild(context.CurrentNode);
+
+            if (!IsToken(context, TokenType.MulOp))
+            {
+                context.AcceptPreview();
+                context.CurrentNode = addTerm;
+                return true;
+            }
+
+            addTerm.AddChild(context.CreateTerminal());
+
+            if (!TryParseMulTerm(context))
+            {
+                context.AbortPreview();
+                return false;
+            }
+
+            context.AcceptPreview();
+            addTerm.AddChild(context.CurrentNode);
+            context.CurrentNode = addTerm;
 
             return true;
         }
 
         private bool TryParseMulTerm(ParseContext context)
         {
+            var mulTerm = context.CreateNonTerminal(NT.MulTerm);
+
             if (IsToken(context, TokenType.LParen))
             {
-                var paren = context.ConsumeToken();
+                mulTerm.AddChild(context.CreateTerminal());
+
                 if (TryParseConstExpr(context))
                 {
-                    paren.AddChild(context.CurrentNode);
+                    mulTerm.AddChild(context.CurrentNode);
                     if (!IsToken(context, TokenType.RParen))
                     {
                         CreateErrorAndRecover("')'", context);
@@ -407,8 +416,8 @@ namespace Sasm.Parsing
                     }
                     else
                     {
-                        paren.AddChild(context.ConsumeToken());
-                        context.CurrentNode = paren;
+                        mulTerm.AddChild(context.CreateTerminal());
+                        context.CurrentNode = mulTerm;
                         return true;
                     }
                 }
@@ -420,6 +429,8 @@ namespace Sasm.Parsing
             }
             else if (TryParseLiteral(context))
             {
+                mulTerm.AddChild(context.CurrentNode);
+                context.CurrentNode = mulTerm;
                 return true;
             }
 
@@ -428,44 +439,47 @@ namespace Sasm.Parsing
 
         private bool TryParseOperation(ParseContext context)
         {
+            var operation = context.CreateNonTerminal(NT.Operation);
+
             if (TryParseOp(context))
             {
-                var op = context.CurrentNode;
+                operation.AddChild(context.CurrentNode);
+
                 if (!TryParseOperand(context))
                     return true;
 
-                op.AddChild(context.CurrentNode);
-                context.CurrentNode = op;
+                operation.AddChild(context.CurrentNode);
 
                 while (IsToken(context, TokenType.Separator))
                 {
-                    op.AddChild(context.ConsumeToken());
+                    operation.AddChild(context.CreateTerminal());
 
-                    if (TryParseOperand(context))
-                    {
-                        op.AddChild(context.CurrentNode);
-                        context.CurrentNode = op;
-                    }
-                    else
+                    if (!TryParseOperand(context))
                     {
                         CreateErrorAndRecover("operand", context);
                         return false;
                     }
+
+                    operation.AddChild(context.CurrentNode);
                 }
 
+                context.CurrentNode = operation;
                 return true;
             }
-            else
-                return false;
+
+            return false;
         }
 
         private bool TryParseOp(ParseContext context)
         {
+            var op = context.CreateNonTerminal(NT.Op);
+
             switch (context.CurrentToken.TokenType)
             {
                 case TokenType.Mnemonic:
                 case TokenType.Identifier:
-                    context.ConsumeToken();
+                    op.AddChild(context.CreateTerminal());
+                    context.CurrentNode = op;
                     return true;
                 default: return false;
             }
@@ -473,67 +487,47 @@ namespace Sasm.Parsing
 
         private bool TryParseOperand(ParseContext context)
         {
-            context.StoreTokenPosition();
-            if (TryParseConstant(context))
+            var operand = context.CreateNonTerminal(NT.Operand);
+
+            context.EnterPreview();
+            if (!TryParseConstant(context)
+                && !TryParseRegisterAlias(context)
+                && !TryParseAbsolute(context)
+                && !TryParseIndirect(context)
+                && !TryParseDisplacement(context)
+                && !TryParseOffset(context))
             {
-                context.DropStoredTokenPosition();
-                return true;
+                context.AbortPreview();
+                return false;
             }
-            context.RestoreTokenPosition();
-            context.StoreTokenPosition();
-            if (TryParseRegisterAlias(context))
-            {
-                context.DropStoredTokenPosition();
-                return true;
-            }
-            context.RestoreTokenPosition();
-            context.StoreTokenPosition();
-            if (TryParseAbsolute(context))
-            {
-                context.DropStoredTokenPosition();
-                return true;
-            }
-            context.RestoreTokenPosition();
-            context.StoreTokenPosition();
-            if (TryParseIndirect(context))
-            {
-                context.DropStoredTokenPosition();
-                return true;
-            }
-            context.RestoreTokenPosition();
-            context.StoreTokenPosition();
-            if (TryParseDisplacement(context))
-            {
-                context.DropStoredTokenPosition();
-                return true;
-            }
-            context.RestoreTokenPosition();
-            context.StoreTokenPosition();
-            if (TryParseOffset(context))
-            {
-                context.DropStoredTokenPosition();
-                return true;
-            }
-            context.RestoreTokenPosition();
-            return false;
+            context.AcceptPreview();
+            operand.AddChild(context.CurrentNode);
+            context.CurrentNode = operand;
+            return true;
         }
 
         private bool TryParseConstant(ParseContext context)
         {
-            if (TryParseConstExpr(context))
+            var constant = context.CreateNonTerminal(NT.Constant);
+
+            context.EnterPreview();
+            if (TryParseConstExpr(context)
+                || TryParseLiteral(context))
             {
-                return true;
-            }
-            else if (TryParseLiteral(context))
-            {
+                context.AcceptPreview();
+                constant.AddChild(context.CurrentNode);
+                context.CurrentNode = constant;
                 return true;
             }
 
+            context.AbortPreview();
             return false;
         }
 
         private bool TryParseLiteral(ParseContext context)
         {
+            var literal = context.CreateNonTerminal(NT.Literal);
+
             switch (context.CurrentToken.TokenType)
             {
                 case TokenType.BinNumber:
@@ -543,7 +537,8 @@ namespace Sasm.Parsing
                 case TokenType.Identifier:
                 case TokenType.Char:
                     {
-                        context.ConsumeToken();
+                        literal.AddChild(context.CreateTerminal());
+                        context.CurrentNode = literal;
                         return true;
                     }
                 default: return false;
@@ -552,47 +547,45 @@ namespace Sasm.Parsing
 
         private bool TryParseAbsolute(ParseContext context)
         {
+            var absolute = context.CreateNonTerminal(NT.AbsoluteMemAccess);
+
             if (IsToken(context, TokenType.LBracket))
             {
-                var parent = context.ConsumeToken();
+                context.EnterPreview();
+                absolute.AddChild(context.CreateTerminal());
 
                 if (TryParseConstant(context))
                 {
-                    parent.AddChild(context.CurrentNode);
-
-                    if (!IsToken(context, TokenType.RBracket))
+                    absolute.AddChild(context.CurrentNode);
+                    if (IsToken(context, TokenType.RBracket))
                     {
-                        CreateErrorAndRecover("']'", context);
-                        return false;
-                    }
-                    else
-                    {
-                        parent.AddChild(context.ConsumeToken());
-                        context.CurrentNode = parent;
+                        context.AcceptPreview();
+                        absolute.AddChild(context.CreateTerminal());
+                        context.CurrentNode = absolute;
                         return true;
                     }
                 }
-                else
-                {
-                    CreateErrorAndRecover("constant", context);
-                    return false;
-                }
+
+                context.AbortPreview();
             }
             return false;
         }
 
         private bool TryParseDisplacement(ParseContext context)
         {
+            var parent = context.CreateNonTerminal(NT.DisplacementMemAccess);
+
             if (IsToken(context, TokenType.LBracket))
             {
-                var parent = context.ConsumeToken();
+                context.EnterPreview();
+                parent.AddChild(context.CreateTerminal());
 
                 if (TryParseRegisterAlias(context))
                 {
                     if (IsToken(context, TokenType.AddOp))
                     {
                         var reg = context.CurrentNode;
-                        var displacement = context.ConsumeToken();
+                        var displacement = context.CreateTerminal();
                         displacement.AddChild(reg);
                         parent.AddChild(displacement);
 
@@ -600,28 +593,14 @@ namespace Sasm.Parsing
                         {
                             displacement.AddChild(context.CurrentNode);
 
-                            if (!IsToken(context, TokenType.RBracket))
+                            if (IsToken(context, TokenType.RBracket))
                             {
-                                CreateErrorAndRecover("']'", context);
-                                return false;
-                            }
-                            else
-                            {
-                                parent.AddChild(context.ConsumeToken());
+                                context.AcceptPreview();
+                                parent.AddChild(context.CreateTerminal());
                                 context.CurrentNode = parent;
                                 return true;
                             }
                         }
-                        else
-                        {
-                            CreateErrorAndRecover("constant", context);
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        CreateErrorAndRecover("'+' or '-'", context);
-                        return false;
                     }
                 }
                 else if (TryParseConstant(context))
@@ -629,58 +608,44 @@ namespace Sasm.Parsing
                     if (IsToken(context, TokenType.AddOp))
                     {
                         var constant = context.CurrentNode;
-                        var displacement = context.ConsumeToken();
+                        var displacement = context.CreateTerminal();
                         displacement.AddChild(constant);
                         parent.AddChild(displacement);
 
                         if (TryParseRegisterAlias(context))
                         {
                             displacement.AddChild(context.CurrentNode);
-                            if (!IsToken(context, TokenType.RBracket))
+
+                            if (IsToken(context, TokenType.RBracket))
                             {
-                                CreateErrorAndRecover("']'", context);
-                                return false;
-                            }
-                            else
-                            {
-                                parent.AddChild(context.ConsumeToken());
+                                context.AcceptPreview();
+                                parent.AddChild(context.CreateTerminal());
                                 context.CurrentNode = parent;
                                 return true;
                             }
                         }
-                        else
-                        {
-                            CreateErrorAndRecover("register", context);
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        CreateErrorAndRecover("'+' or '-'", context);
-                        return false;
                     }
                 }
-                else
-                {
-                    CreateErrorAndRecover("register or constant", context);
-                    return false;
-                }
+                context.AbortPreview();
             }
             return false;
         }
 
         private bool TryParseOffset(ParseContext context)
         {
+            var parent = context.CreateNonTerminal(NT.OffsetMemAccess);
+
             if (IsToken(context, TokenType.LBracket))
             {
-                var parent = context.ConsumeToken();
+                context.EnterPreview();
+                parent.AddChild(context.CreateTerminal());
 
                 if (TryParseRegisterAlias(context))
                 {
                     if (IsToken(context, TokenType.AddOp))
                     {
                         var reg = context.CurrentNode;
-                        var offset = context.ConsumeToken();
+                        var offset = context.CreateTerminal();
                         offset.AddChild(reg);
                         parent.AddChild(offset);
 
@@ -688,76 +653,55 @@ namespace Sasm.Parsing
                         {
                             offset.AddChild(context.CurrentNode);
 
-                            if (!IsToken(context, TokenType.RBracket))
+                            if (IsToken(context, TokenType.RBracket))
                             {
-                                CreateErrorAndRecover("']'", context);
-                                return false;
-                            }
-                            else
-                            {
-                                parent.AddChild(context.ConsumeToken());
+                                context.AcceptPreview();
+                                parent.AddChild(context.CreateTerminal());
                                 context.CurrentNode = parent;
                                 return true;
                             }
                         }
-                        else
-                        {
-                            CreateErrorAndRecover("constant", context);
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        CreateErrorAndRecover("'+' or '-'", context);
-                        return false;
                     }
                 }
-                else
-                {
-                    CreateErrorAndRecover("register", context);
-                    return false;
-                }
+                context.AbortPreview();
             }
             return false;
         }
 
         private bool TryParseIndirect(ParseContext context)
         {
+            var parent = context.CreateNonTerminal(NT.IndirectMemAccess);
             if (IsToken(context, TokenType.LBracket))
             {
-                var parent = context.ConsumeToken();
+                context.EnterPreview();
+                parent.AddChild(context.CreateTerminal());
 
                 if (TryParseRegisterAlias(context))
                 {
                     parent.AddChild(context.CurrentNode);
 
-                    if (!IsToken(context, TokenType.RBracket))
+                    if (IsToken(context, TokenType.RBracket))
                     {
-                        CreateErrorAndRecover("']'", context);
-                        return false;
-                    }
-                    else
-                    {
-                        parent.AddChild(context.ConsumeToken());
+                        context.AcceptPreview();
+                        parent.AddChild(context.CreateTerminal());
                         context.CurrentNode = parent;
                         return true;
                     }
                 }
-                else
-                {
-                    CreateErrorAndRecover("register", context);
-                    return false;
-                }
+                context.AbortPreview();
             }
             return false;
         }
 
         private bool TryParseRegisterAlias(ParseContext context)
         {
+            var registerAlias = context.CreateNonTerminal(NT.RegisterAlias);
+
             if (IsToken(context, TokenType.Register)
                 || IsToken(context, TokenType.Identifier))
             {
-                context.ConsumeToken();
+                registerAlias.AddChild(context.CreateTerminal());
+                context.CurrentNode = registerAlias;
                 return true;
             }
 

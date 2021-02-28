@@ -13,7 +13,7 @@ namespace Sasm
             var parser = new Parser();
             var lines = new List<string>();
 
-            string line = "";
+            string line = "lea bc, [hl+constant]";
             int lineNumber = 1;
             while (line != ".")
             {
@@ -68,7 +68,12 @@ namespace Sasm
         {
             Console.Write(new string('|', currentIndentation));
             Console.Write('-');
-            Console.WriteLine($"{currentNode.Token.TokenType}({currentNode.Term})");
+
+            string designator = currentNode.NodeType == ParseTreeNodeType.Terminal ?
+                currentNode.Token.TokenType.ToString() :
+                currentNode.NodeType.ToString();
+
+            Console.WriteLine(designator);
             if (currentNode.Children != null)
             {
                 foreach (var c in currentNode.Children)

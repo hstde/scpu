@@ -13,6 +13,7 @@ namespace Sasm.Parsing
         private bool hasErrors;
         private Token eofToken;
         private Stack<int> tokenPositionStack;
+        private Stack<ParserState> stateStack;
 
         public ParseTreeNode CurrentNode { get; set; }
         public ParserState State { get; set; }
@@ -41,6 +42,8 @@ namespace Sasm.Parsing
             ParseWatch = new Stopwatch();
             tokenPosition = 0;
             eofToken = new Token(TokenType.EndOfFile, SourceLines.Count, "", 0);
+            tokenPositionStack = new Stack<int>();
+            stateStack = new Stack<ParserState>();
         }
 
         public void AddError(SourceReference source, string message)
@@ -61,35 +64,40 @@ namespace Sasm.Parsing
             return ++tokenPosition < Tokens.Count;
         }
 
-        public ParseTreeNode ConsumeToken()
+        public ParseTreeNode CreateNonTerminal(ParseTreeNodeType type)
         {
-            CurrentNode = new ParseTreeNode(CurrentToken);
+            return new ParseTreeNode(CurrentToken, type);
+        }
+
+        public ParseTreeNode CreateTerminal()
+        {
+            var node = new ParseTreeNode(CurrentToken, ParseTreeNodeType.Terminal);
             MoveNextToken();
-            return CurrentNode;
+            return node;
         }
 
-        public void StoreTokenPosition()
+        public void EnterPreview()
         {
-            State = ParserState.Previewing;
-            if (tokenPositionStack is null)
-                tokenPositionStack = new Stack<int>();
+            stateStack.Push(State);
             tokenPositionStack.Push(tokenPosition);
+            State = ParserState.Previewing;
         }
 
-        public bool RestoreTokenPosition()
+        public bool AbortPreview()
         {
-            State = ParserState.Parsing;
-            if (tokenPositionStack is null || !tokenPositionStack.Any())
+            if (!tokenPositionStack.Any())
                 return false;
+            State = stateStack.Pop();
             tokenPosition = tokenPositionStack.Pop();
             return true;
         }
 
-        public bool DropStoredTokenPosition()
+        public bool AcceptPreview()
         {
-            State = ParserState.Parsing;
-            if (tokenPositionStack is null || !tokenPositionStack.Any())
+            if (!tokenPositionStack.Any())
                 return false;
+            State = ParserState.Parsing;
+            stateStack.Pop();
             tokenPositionStack.Pop();
             return true;
         }
