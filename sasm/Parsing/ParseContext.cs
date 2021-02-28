@@ -61,9 +61,9 @@ namespace Sasm.Parsing
             return ++tokenPosition < Tokens.Count;
         }
 
-        public ParseTreeNode ConsumeToken(ParseTerm expr)
+        public ParseTreeNode ConsumeToken()
         {
-            CurrentNode = new ParseTreeNode(CurrentToken, expr);
+            CurrentNode = new ParseTreeNode(CurrentToken);
             MoveNextToken();
             return CurrentNode;
         }

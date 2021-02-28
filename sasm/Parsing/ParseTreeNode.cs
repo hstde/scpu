@@ -9,17 +9,15 @@ namespace Sasm.Parsing
     {
         private List<ParseTreeNode> children;
 
-        public ParseTerm Term { get; }
         public Token Token { get; }
         public SourceReference Source { get; }
         public IReadOnlyList<ParseTreeNode> Children => children
             ?? (IReadOnlyList<ParseTreeNode>)Array.Empty<ParseTreeNode>();
 
-        public ParseTreeNode(Token token, ParseTerm expr)
+        public ParseTreeNode(Token token)
         {
             Token = token;
             Source = token.Source;
-            Term = expr;
         }
 
         public void AddChild(ParseTreeNode node)
