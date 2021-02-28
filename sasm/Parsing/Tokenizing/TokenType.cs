@@ -4,6 +4,7 @@ namespace Sasm.Parsing.Tokenizing
     {
         Unknown,
         Start,
+        Line,
         Mnemonic,
         LabelDefinition,
         String,

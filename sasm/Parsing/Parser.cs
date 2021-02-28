@@ -34,10 +34,12 @@ namespace Sasm.Parsing
         private void ParseStart(ParseContext context)
         {
             var startNode = new ParseTreeNode(new Token(TokenType.Start, 0, "", 0));
+            context.CurrentNode = startNode;
 
             while (!IsToken(context, TokenType.EndOfFile))
             {
                 context.State = ParserState.Parsing;
+
                 if (!TryParseLine(context))
                 {
                     CreateErrorAndRecover("line", context);
@@ -58,7 +60,22 @@ namespace Sasm.Parsing
 
         private bool TryParseLine(ParseContext context)
         {
-            TryParseInstruction(context);
+            var line = new ParseTreeNode(new Token(TokenType.Line, context.CurrentToken.Source.lineNumber, "", 0));
+
+            if(IsToken(context, TokenType.LabelDefinition))
+            {
+                line.AddChild(context.ConsumeToken());
+            }
+
+            if(TryParseInstruction(context))
+            {
+                line.AddChild(context.CurrentNode);
+            }
+
+            if(IsToken(context, TokenType.Comment))
+            {
+                line.AddChild(context.ConsumeToken());
+            }
 
             if (!IsToken(context, TokenType.EndOfLine))
             {
@@ -66,6 +83,8 @@ namespace Sasm.Parsing
                 CreateErrorAndRecover("end of line", context);
                 return false;
             }
+
+            context.CurrentNode = line;
 
             context.MoveNextToken();
 
