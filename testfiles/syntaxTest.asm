@@ -1,9 +1,9 @@
-.segment a
+.segment abs
 .org 100
     .include "test"
 label: .times 100 db 0
 .warning "test ", 100 + 3
-.const constant (a * 2)
+.const constant (abs * 2)
 db `escape string \n\0`, 'a', "blub"
 
 ld a, 0xf0

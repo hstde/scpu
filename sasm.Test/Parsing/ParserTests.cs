@@ -170,6 +170,39 @@ namespace Sasm.Test.Parsing
                     "two lines of comments",
                     Node(TokenType.Line, Node(TokenType.Comment)),
                     Node(TokenType.Line, Node(TokenType.Comment)));
+                yield return CreateCaseSingleLine(
+                    "ld [1], a",
+                    "load absolute with register",
+                    Node(TokenType.Mnemonic,
+                        Node(TokenType.LBracket,
+                            Node(TokenType.DecNumber),
+                            Node(TokenType.RBracket)),
+                        Node(TokenType.Separator),
+                        Node(TokenType.Register)));
+                yield return CreateCaseSingleLine(
+                    ".include \"test.inc\"",
+                    "include",
+                    Node(TokenType.Include, Node(TokenType.String)));
+                yield return CreateCaseSingleLine(
+                    ".org 100+2",
+                    "origin",
+                    Node(TokenType.Origin,
+                        Node(TokenType.AddOp,
+                            Node(TokenType.DecNumber),
+                            Node(TokenType.DecNumber))));
+                yield return CreateCaseSingleLine(
+                    ".times 50 db 0",
+                    "times with data command",
+                    Node(TokenType.TimesStatement,
+                        Node(TokenType.DecNumber),
+                        Node(TokenType.DataDefinition,
+                            Node(TokenType.DecNumber))));
+                yield return CreateCaseSingleLine(
+                    ".times 50 not",
+                    "times with operation",
+                    Node(TokenType.TimesStatement,
+                        Node(TokenType.DecNumber),
+                        Node(TokenType.Mnemonic)));
             }
         }
 

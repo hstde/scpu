@@ -62,17 +62,17 @@ namespace Sasm.Parsing
         {
             var line = new ParseTreeNode(new Token(TokenType.Line, context.CurrentToken.Source.lineNumber, "", 0));
 
-            if(IsToken(context, TokenType.LabelDefinition))
+            if (IsToken(context, TokenType.LabelDefinition))
             {
                 line.AddChild(context.ConsumeToken());
             }
 
-            if(TryParseInstruction(context))
+            if (TryParseInstruction(context))
             {
                 line.AddChild(context.CurrentNode);
             }
 
-            if(IsToken(context, TokenType.Comment))
+            if (IsToken(context, TokenType.Comment))
             {
                 line.AddChild(context.ConsumeToken());
             }
@@ -95,8 +95,251 @@ namespace Sasm.Parsing
         {
             if (TryParseOperation(context))
                 return true;
+            if (TryParseDirective(context))
+                return true;
 
             return false;
+        }
+
+        private bool TryParseDirective(ParseContext context)
+        {
+            if (TryParseSegmentDirective(context))
+            {
+                return true;
+            }
+            if (TryParseOriginDirective(context))
+            {
+                return true;
+            }
+            if (TryParseIncludeDirective(context))
+            {
+                return true;
+            }
+            if (TryParseTimesDirective(context))
+            {
+                return true;
+            }
+            if (TryParseDataDirective(context))
+            {
+                return true;
+            }
+            if (TryParseWarningDirective(context))
+            {
+                return true;
+            }
+            if (TryParseConstDirective(context))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryParseConstDirective(ParseContext context)
+        {
+            if (!IsToken(context, TokenType.ConstantDeclaration))
+                return false;
+
+            var directive = context.ConsumeToken();
+
+            if (!IsToken(context, TokenType.Identifier))
+            {
+                CreateErrorAndRecover("identifier after constant declaration", context);
+                return false;
+            }
+
+            directive.AddChild(context.ConsumeToken());
+
+            if (!TryParseDataConstant(context))
+            {
+                CreateErrorAndRecover("data constant after constant declaration", context);
+                return false;
+            }
+
+            directive.AddChild(context.CurrentNode);
+            context.CurrentNode = directive;
+
+            return true;
+        }
+
+        private bool TryParseDataConstant(ParseContext context)
+        {
+            switch (context.CurrentToken.TokenType)
+            {
+                case TokenType.String:
+                case TokenType.EscapedString:
+                    context.ConsumeToken();
+                    return true;
+            }
+
+            if (TryParseConstant(context))
+                return true;
+
+            return false;
+        }
+
+        private bool TryParseWarningDirective(ParseContext context)
+        {
+            if (!IsToken(context, TokenType.WarningCommand))
+                return false;
+
+            var directive = context.ConsumeToken();
+            if (!TryParseDataConstant(context))
+            {
+                CreateErrorAndRecover("dataconstant in warning directive", context);
+                return false;
+            }
+
+            directive.AddChild(context.CurrentNode);
+
+            while (IsToken(context, TokenType.Separator))
+            {
+                directive.AddChild(context.ConsumeToken());
+                if (!TryParseDataConstant(context))
+                {
+                    CreateErrorAndRecover("dataconstant after separator in warning directive", context);
+                    return false;
+                }
+
+                directive.AddChild(context.CurrentNode);
+            }
+
+            context.CurrentNode = directive;
+            return true;
+        }
+
+        private bool TryParseDataDirective(ParseContext context)
+        {
+            if (!IsToken(context, TokenType.DataDefinition))
+                return false;
+
+            var directive = context.ConsumeToken();
+            if (!TryParseDataConstant(context))
+            {
+                CreateErrorAndRecover("data constant in data directive", context);
+                return false;
+            }
+
+            directive.AddChild(context.CurrentNode);
+
+            while (IsToken(context, TokenType.Separator))
+            {
+                directive.AddChild(context.ConsumeToken());
+                if (!TryParseDataConstant(context))
+                {
+                    CreateErrorAndRecover("dataconstant after separator in data directive", context);
+                    return false;
+                }
+
+                directive.AddChild(context.CurrentNode);
+            }
+
+            context.CurrentNode = directive;
+            return true;
+        }
+
+        private bool TryParseTimesDirective(ParseContext context)
+        {
+            if (!IsToken(context, TokenType.TimesStatement))
+                return false;
+
+            var directive = context.ConsumeToken();
+            if (!TryParseConstant(context))
+            {
+                CreateErrorAndRecover("constant after times command", context);
+                return false;
+            }
+
+            directive.AddChild(context.CurrentNode);
+
+            context.StoreTokenPosition();
+            if (TryParseDataDirective(context))
+            {
+                context.DropStoredTokenPosition();
+                directive.AddChild(context.CurrentNode);
+                context.CurrentNode = directive;
+                return true;
+            }
+            context.RestoreTokenPosition();
+            context.StoreTokenPosition();
+            if (TryParseOperation(context))
+            {
+                context.DropStoredTokenPosition();
+                directive.AddChild(context.CurrentNode);
+                context.CurrentNode = directive;
+                return true;
+            }
+            context.DropStoredTokenPosition();
+            CreateErrorAndRecover("data directive or operation after times", context);
+            return false;
+        }
+
+        private bool TryParseIncludeDirective(ParseContext context)
+        {
+            if (!IsToken(context, TokenType.Include))
+            {
+                return false;
+            }
+
+            var directive = context.ConsumeToken();
+
+            if(!IsToken(context, TokenType.String))
+            {
+                CreateErrorAndRecover("string after include", context);
+                return false;
+            }
+
+            directive.AddChild(context.ConsumeToken());
+
+            context.CurrentNode = directive;
+            return true;
+        }
+
+        private bool TryParseOriginDirective(ParseContext context)
+        {
+            if (!IsToken(context, TokenType.Origin))
+            {
+                return false;
+            }
+
+            var directive = context.ConsumeToken();
+
+            if (!TryParseConstant(context))
+            {
+                CreateErrorAndRecover("constant after origin", context);
+                return false;
+            }
+
+            directive.AddChild(context.CurrentNode);
+
+            context.CurrentNode = directive;
+            return true;
+        }
+
+        private bool TryParseSegmentDirective(ParseContext context)
+        {
+            if (!IsToken(context, TokenType.Segment))
+            {
+                return false;
+            }
+
+            var directive = context.ConsumeToken();
+
+            if (!IsToken(context, TokenType.Identifier))
+            {
+                CreateErrorAndRecover("segment identifier", context);
+                return false;
+            }
+
+            directive.AddChild(context.ConsumeToken());
+
+            if(TryParseConstant(context))
+            {
+                directive.AddChild(context.CurrentNode);
+            }
+
+            context.CurrentNode = directive;
+            return true;
         }
 
         private bool TryParseConstExpr(ParseContext context)
@@ -315,7 +558,7 @@ namespace Sasm.Parsing
 
                 if (TryParseConstant(context))
                 {
-                    parent.AddChild(context.ConsumeToken());
+                    parent.AddChild(context.CurrentNode);
 
                     if (!IsToken(context, TokenType.RBracket))
                     {
