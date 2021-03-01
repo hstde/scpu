@@ -1,6 +1,6 @@
 namespace Sasm
 {
-    public enum Mnemonic
+    public enum Mnemonics
     {
         NOP,
         LD,

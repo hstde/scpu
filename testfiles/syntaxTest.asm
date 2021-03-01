@@ -14,7 +14,7 @@ ld iy, 0b1001_0101_0000_1101
 ld a, $
 ld b, -2
 ld c, 'a'
-ld d, '\'
+ld d, '\\'
 
 .const.segment.1:
 

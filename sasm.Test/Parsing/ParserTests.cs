@@ -3,213 +3,444 @@ namespace Sasm.Test.Parsing
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Irony.Parsing;
     using NUnit.Framework;
     using Sasm.Parsing;
-    using Sasm.Parsing.Tokenizing;
+    using Grammar = Sasm.Parsing.Grammar;
+    using Parser = Sasm.Parsing.Parser;
 
     public static class ParserTests
     {
+        private static Grammar G = Grammar.Instance;
         public static IEnumerable<TestCaseData> NoErrorCases
         {
             get
             {
                 TestCaseData CreateCaseSingleLine(string input, string name, params TestNode[] nodes)
                 {
-                    var startNode = new TestNode(ParseTreeNodeType.Start);
-                    var line = new TestNode(ParseTreeNodeType.Line);
-                    line.children.AddRange(nodes);
-                    startNode.children.Add(line);
+                    var startNode = new TestNode(G.Start);
+                    if ((nodes.Any()))
+                    {
+                        var line = new TestNode(G.Line);
+                        line.children.AddRange(nodes);
+                        startNode.children.Add(line);
+                    }
                     return new TestCaseData(input, startNode).SetName("{m}_" + name);
                 }
-                TestCaseData CreateCaseMultiLine(string input, string name, params TestNode[] nodes)
-                {
-                    var startNode = new TestNode(ParseTreeNodeType.Start);
-                    startNode.children.AddRange(nodes);
-                    return new TestCaseData(input, startNode).SetName("{m}_" + name);
-                }
-                TestNode Node(ParseTreeNodeType type, params TestNode[] children)
+                TestNode Node(BnfTerm type, params TestNode[] children)
                 {
                     var node = new TestNode(type);
                     node.children.AddRange(children);
                     return node;
                 }
-                yield break;
-                /*yield return CreateCaseSingleLine(
+                TestNode NodeS(string type, params TestNode[] children)
+                {
+                    var node = new TestNode(type);
+                    node.children.AddRange(children);
+                    return node;
+                }
+
+
+                yield return CreateCaseSingleLine(
                     "ab 1",
                     "identifier number",
-                    Node(ParseTreeNodeType.Instruction, 
-                        Node(ParseTreeNodeType.Operation, 
-                            Node(ParseTreeNodeType.Op,
-                                Node(ParseTreeNodeType.Terminal)),
-                            Node(ParseTreeNodeType.Terminal),
-                            Node(ParseTreeNodeType.Operand,
-                                Node(ParseTreeNodeType.Constant)))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.Literal,
+                                            Node(G.Number))))))));
                 yield return CreateCaseSingleLine(
                     "abc",
                     "one identifier",
-                    Node(TokenType.Identifier));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList))));
                 yield return CreateCaseSingleLine(
                     "ab 1+1",
                     "identifier two number addition",
-                    Node(TokenType.Identifier, Node(TokenType.AddOp, Node(TokenType.DecNumber), Node(TokenType.DecNumber))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.BinExpr,
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))),
+                                            Node(G.BinOp,
+                                                new TestNode("+")),
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))))))))));
                 yield return CreateCaseSingleLine(
                     "ab abc+abc",
                     "identifier two ident addition",
-                    Node(TokenType.Identifier, Node(TokenType.AddOp, Node(TokenType.Identifier), Node(TokenType.Identifier))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.BinExpr,
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Ident))),
+                                            Node(G.BinOp,
+                                                new TestNode("+")),
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Ident))))))))));
                 yield return CreateCaseSingleLine(
                     "ab 1+-1",
                     "identifier negative number addition",
-                    Node(TokenType.Identifier, Node(TokenType.AddOp, Node(TokenType.DecNumber), Node(TokenType.DecNumber))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.BinExpr,
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))),
+                                            Node(G.BinOp,
+                                                new TestNode("+")),
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))))))))));
                 yield return CreateCaseSingleLine(
                     "ab 1+'a'",
                     "identifier addition with a character",
-                    Node(TokenType.Identifier, Node(TokenType.AddOp, Node(TokenType.DecNumber), Node(TokenType.Char))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.BinExpr,
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))),
+                                            Node(G.BinOp,
+                                                new TestNode("+")),
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.CharLiteral))))))))));
                 yield return CreateCaseSingleLine(
                     "ab 1+2*3",
                     "identifier addition and multiplication",
-                    Node(TokenType.Identifier,
-                        Node(TokenType.AddOp,
-                            Node(TokenType.DecNumber),
-                            Node(TokenType.MulOp,
-                                Node(TokenType.DecNumber),
-                                Node(TokenType.DecNumber)))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.BinExpr,
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))),
+                                            Node(G.BinOp,
+                                                new TestNode("+")),
+                                            Node(G.Constant,
+                                                Node(G.BinExpr,
+                                                    Node(G.Constant,
+                                                        Node(G.Literal,
+                                                            Node(G.Number))),
+                                                    Node(G.BinOp,
+                                                        new TestNode("*")),
+                                                    Node(G.Constant,
+                                                        Node(G.Literal,
+                                                            Node(G.Number))))))))))));
                 yield return CreateCaseSingleLine(
                     "ab 2*(1+3)",
                     "identifier subexpressions",
-                    Node(TokenType.Identifier,
-                        Node(TokenType.MulOp,
-                            Node(TokenType.DecNumber),
-                            Node(TokenType.LParen,
-                                Node(TokenType.AddOp,
-                                    Node(TokenType.DecNumber),
-                                    Node(TokenType.DecNumber)),
-                                Node(TokenType.RParen)))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.BinExpr,
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))),
+                                            Node(G.BinOp,
+                                                new TestNode("*")),
+                                            Node(G.Constant,
+                                                new TestNode("("),
+                                                Node(G.Constant,
+                                                    Node(G.BinExpr,
+                                                        Node(G.Constant,
+                                                            Node(G.Literal,
+                                                                Node(G.Number))),
+                                                        Node(G.BinOp,
+                                                            new TestNode("+")),
+                                                        Node(G.Constant,
+                                                            Node(G.Literal,
+                                                                Node(G.Number))))),
+                                                new TestNode(")")))))))));
                 yield return CreateCaseSingleLine(
                     "ab 1+(2+abc)",
                     "identifier subexpression with ident",
-                    Node(TokenType.Identifier,
-                        Node(TokenType.AddOp,
-                            Node(TokenType.DecNumber),
-                            Node(TokenType.LParen,
-                                Node(TokenType.AddOp,
-                                    Node(TokenType.DecNumber),
-                                    Node(TokenType.Identifier)),
-                                Node(TokenType.RParen)))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Ident)),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.BinExpr,
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number))),
+                                            Node(G.BinOp,
+                                                new TestNode("+")),
+                                            Node(G.Constant,
+                                                new TestNode("("),
+                                                Node(G.Constant,
+                                                    Node(G.BinExpr,
+                                                        Node(G.Constant,
+                                                            Node(G.Literal,
+                                                                Node(G.Number))),
+                                                        Node(G.BinOp,
+                                                            new TestNode("+")),
+                                                        Node(G.Constant,
+                                                            Node(G.Literal,
+                                                                Node(G.Ident))))),
+                                                new TestNode(")")))))))));
                 yield return CreateCaseSingleLine(
                     "ld a, 1",
                     "mnemonic with two arguments",
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.Register),
-                        Node(TokenType.Separator),
-                        Node(TokenType.DecNumber)));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register"))),
+                                Node(G.Operand,
+                                    Node(G.Constant,
+                                        Node(G.Literal,
+                                            Node(G.Number))))))));
                 yield return CreateCaseSingleLine(
                     "",
                     "empty expression");
                 yield return CreateCaseSingleLine(
                     "ld a, [de]",
                     "load a indirect de",
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.Register),
-                        Node(TokenType.Separator),
-                        Node(TokenType.LBracket,
-                            Node(TokenType.Register),
-                            Node(TokenType.RBracket))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register"))),
+                                Node(G.Operand,
+                                    Node(G.IndirectMemAccess,
+                                        new TestNode("["),
+                                        Node(G.Register,
+                                            new TestNode("register")),
+                                        new TestNode("]")))))));
                 yield return CreateCaseSingleLine(
                     "ld [ix+1], b",
                     "load displacement ix b",
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.LBracket,
-                            Node(TokenType.AddOp,
-                                Node(TokenType.Register),
-                                Node(TokenType.DecNumber)),
-                            Node(TokenType.RBracket)),
-                        Node(TokenType.Separator),
-                        Node(TokenType.Register)));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.DisplacementMemAccess,
+                                        new TestNode("["),
+                                        NodeS("Unnamed2",
+                                            Node(G.Register,
+                                                new TestNode("register")),
+                                            new TestNode("+"),
+                                            Node(G.Constant,
+                                                Node(G.Literal,
+                                                    Node(G.Number)))),
+                                        new TestNode("]"))),
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register")))))));
                 yield return CreateCaseSingleLine(
                     "lea ix, [iy+hl]",
                     "load effective address to ix of iy offset hl",
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.Register),
-                        Node(TokenType.Separator),
-                        Node(TokenType.LBracket,
-                            Node(TokenType.AddOp,
-                                Node(TokenType.Register),
-                                Node(TokenType.Register)),
-                            Node(TokenType.RBracket))));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register"))),
+                                Node(G.Operand,
+                                    Node(G.OffsetMemAccess,
+                                        new TestNode("["),
+                                        Node(G.Register,
+                                            new TestNode("register")),
+                                        new TestNode("+"),
+                                        Node(G.Register,
+                                            new TestNode("register")),
+                                        new TestNode("]")))))));
                 yield return CreateCaseSingleLine(
                     "label:",
                     "label definition",
-                    Node(TokenType.LabelDefinition));
+                    Node(G.LabelDefinition,
+                        Node(G.Ident),
+                        new TestNode(":")));
                 yield return CreateCaseSingleLine(
                     ";comment",
-                    "comment",
-                    Node(TokenType.Comment));
+                    "comment");
                 yield return CreateCaseSingleLine(
                     "label:;comment",
                     "label with comment",
-                    Node(TokenType.LabelDefinition),
-                    Node(TokenType.Comment));
+                    Node(G.LabelDefinition,
+                        Node(G.Ident),
+                        new TestNode(":")));
                 yield return CreateCaseSingleLine(
                     "label: inc a",
                     "label with mnemonic and argument",
-                    Node(TokenType.LabelDefinition),
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.Register)));
+                    Node(G.LabelDefinition,
+                        Node(G.Ident),
+                        new TestNode(":")),
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register")))))));
                 yield return CreateCaseSingleLine(
                     "label: inc a ; increment a",
                     "label with mnemonic and argument and comment",
-                    Node(TokenType.LabelDefinition),
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.Register)),
-                    Node(TokenType.Comment));
+                    Node(G.LabelDefinition,
+                        Node(G.Ident),
+                        new TestNode(":")),
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register")))))));
                 yield return CreateCaseSingleLine(
                     "mov a, b ; copy b into a",
                     "mnemonic with two arguments and comment",
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.Register),
-                        Node(TokenType.Separator),
-                        Node(TokenType.Register)),
-                    Node(TokenType.Comment));
-                yield return CreateCaseMultiLine(
-                    ";comment1\n"
-                    + ";comment2",
-                    "two lines of comments",
-                    Node(TokenType.Line, Node(TokenType.Comment)),
-                    Node(TokenType.Line, Node(TokenType.Comment)));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register"))),
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register")))))));
                 yield return CreateCaseSingleLine(
                     "ld [1], a",
                     "load absolute with register",
-                    Node(TokenType.Mnemonic,
-                        Node(TokenType.LBracket,
-                            Node(TokenType.DecNumber),
-                            Node(TokenType.RBracket)),
-                        Node(TokenType.Separator),
-                        Node(TokenType.Register)));
+                    Node(G.Instruction,
+                        Node(G.Operation,
+                            Node(G.Op,
+                                Node(G.Mnemonic,
+                                    new TestNode("opcode"))),
+                            Node(G.OperandList,
+                                Node(G.Operand,
+                                    Node(G.AbsoluteMemAccess,
+                                        new TestNode("["),
+                                        Node(G.Constant,
+                                            Node(G.Literal,
+                                                Node(G.Number))),
+                                        new TestNode("]"))),
+                                Node(G.Operand,
+                                    Node(G.Register,
+                                        new TestNode("register")))))));
                 yield return CreateCaseSingleLine(
                     ".include \"test.inc\"",
                     "include",
-                    Node(TokenType.Include, Node(TokenType.String)));
+                    Node(G.Instruction,
+                        Node(G.Directive,
+                            Node(G.IncludeDirective,
+                                new TestNode(".include"),
+                                Node(G.NormalString)))));
                 yield return CreateCaseSingleLine(
                     ".org 100+2",
                     "origin",
-                    Node(TokenType.Origin,
-                        Node(TokenType.AddOp,
-                            Node(TokenType.DecNumber),
-                            Node(TokenType.DecNumber))));
+                    Node(G.Instruction,
+                        Node(G.Directive,
+                            Node(G.OriginDirective,
+                                new TestNode(".org"),
+                                Node(G.Constant,
+                                    Node(G.BinExpr,
+                                        Node(G.Constant,
+                                            Node(G.Literal,
+                                                Node(G.Number))),
+                                        Node(G.BinOp,
+                                            new TestNode("+")),
+                                        Node(G.Constant,
+                                            Node(G.Literal,
+                                                Node(G.Number)))))))));
                 yield return CreateCaseSingleLine(
                     ".times 50 db 0",
                     "times with data command",
-                    Node(TokenType.TimesStatement,
-                        Node(TokenType.DecNumber),
-                        Node(TokenType.DataDefinition,
-                            Node(TokenType.DecNumber))));
+                    Node(G.Instruction,
+                        Node(G.Directive,
+                            Node(G.TimesDirective,
+                                new TestNode(".times"),
+                                Node(G.Constant,
+                                    Node(G.Literal,
+                                        Node(G.Number))),
+                                NodeS("Unnamed1",
+                                    Node(G.DataDirective,
+                                        Node(G.DataDefinition,
+                                            NodeS("db")),
+                                        Node(G.DataConstantList,
+                                            Node(G.DataConstant,
+                                                Node(G.Constant,
+                                                    Node(G.Literal,
+                                                        Node(G.Number)))))))))));
                 yield return CreateCaseSingleLine(
                     ".times 50 not",
                     "times with operation",
-                    Node(TokenType.TimesStatement,
-                        Node(TokenType.DecNumber),
-                        Node(TokenType.Mnemonic)));
-                        */
+                    Node(G.Instruction,
+                        Node(G.Directive,
+                            Node(G.TimesDirective,
+                                new TestNode(".times"),
+                                Node(G.Constant,
+                                    Node(G.Literal,
+                                        Node(G.Number))),
+                                NodeS("Unnamed1",
+                                    Node(G.Operation,
+                                        Node(G.Op,
+                                            Node(G.Mnemonic,
+                                                NodeS("opcode"))),
+                                        Node(G.OperandList)))))));
             }
         }
 
@@ -220,34 +451,34 @@ namespace Sasm.Test.Parsing
                 TestCaseData CreateCase(
                     string input,
                     string name,
-                    params (int start, int length)[] errorLocations)
+                    params int[] errorLocations)
                 {
                     var locations = errorLocations
-                        .Select(l => new SourceReference(0, l.start, l.length))
+                        .Select(l => new SourceLocation(l, 0, l))
                         .ToArray();
                     return new TestCaseData(input, locations).SetName("{m}_" + name);
                 }
 
 
-                yield return CreateCase("bc", "register not expected", (0, 2));
-                yield return CreateCase("ab 1+bc", "register not expected with addition", (3, 1));
-                yield return CreateCase("ab bc+1", "addition not expected", (5, 1));
-                yield return CreateCase("12", "number not expected", (0, 2));
-                yield return CreateCase("ab 1+(1+bc)", "register not expected in subexpression", (3, 1));
-                yield return CreateCase("ab ()", "missing expression in parentheses", (3, 1));
-                yield return CreateCase("ab (1+1", "missing closing parenthesis", (7, 0));
-                yield return CreateCase("ab 1+2+3)", "missing opening parenthesis", (8, 1));
+                yield return CreateCase("bc", "register not expected", 0);
+                yield return CreateCase("ab 1+bc", "register not expected with addition", 5);
+                yield return CreateCase("ab bc+1", "addition not expected", 5);
+                yield return CreateCase("12", "number not expected", 0);
+                yield return CreateCase("ab 1+(1+bc)", "register not expected in subexpression", 8);
+                yield return CreateCase("ab ()", "missing expression in parentheses", 4);
+                yield return CreateCase("ab (1+1", "missing closing parenthesis", 7);
+                yield return CreateCase("ab 1+2+3)", "missing opening parenthesis", 8);
             }
         }
 
         [TestCaseSource(nameof(ErrorCases))]
-        public static void ReportsErrorsCorrectly(string input, SourceReference[] expectedLocations)
+        public static void ReportsErrorsCorrectly(string input, SourceLocation[] expectedLocations)
         {
             var tree = new Parser().Parse(input);
 
-            var actualErrors = tree.Messages;
+            var actualErrors = tree.ParserMessages;
 
-            var actualLocations = actualErrors.Select(e => e.Source).ToArray();
+            var actualLocations = actualErrors.Select(e => e.Location).ToArray();
 
             Assert.That(actualLocations, Is.EqualTo(expectedLocations));
         }
@@ -255,7 +486,7 @@ namespace Sasm.Test.Parsing
         [TestCaseSource(nameof(NoErrorCases))]
         public static void ParsesCorrectly(string input, TestNode expectedTree)
         {
-            var tree = new Parser().Parse(input.Split('\n'));
+            var tree = new Parser().Parse(input);
 
             AssertTree(expectedTree, tree);
         }
@@ -268,14 +499,15 @@ namespace Sasm.Test.Parsing
 
         private static void AssertNode(TestNode expected, ParseTreeNode actual, string nodePath)
         {
+            var children = actual.ChildNodes.Where(e => e.Term is BnfExpression);
             Assert.Multiple(() =>
             {
                 Assert.That(
-                    actual.NodeType,
+                    actual.Term.Name,
                     Is.EqualTo(expected.type),
                     $"Tokentype differs on node ({nodePath})!");
                 Assert.That(
-                    actual.Children.Count,
+                    actual.ChildNodes.Count,
                     Is.EqualTo(expected.children.Count),
                     $"Childcount differs on node ({nodePath})!");
             });
@@ -284,7 +516,7 @@ namespace Sasm.Test.Parsing
             {
                 AssertNode(
                     expected.children[i],
-                    actual.Children[i],
+                    actual.ChildNodes[i],
                     nodePath + "." + expected.children[i].type);
             }
         }
@@ -292,9 +524,15 @@ namespace Sasm.Test.Parsing
         public class TestNode
         {
             public List<TestNode> children;
-            public ParseTreeNodeType type;
+            public string type;
 
-            public TestNode(ParseTreeNodeType type)
+            public TestNode(Irony.Parsing.BnfTerm type)
+            {
+                this.type = type.Name;
+                this.children = new List<TestNode>();
+            }
+
+            public TestNode(string type)
             {
                 this.type = type;
                 this.children = new List<TestNode>();

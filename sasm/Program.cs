@@ -4,43 +4,46 @@ namespace Sasm
 {
     using System.Collections.Generic;
     using System.Linq;
-    using Sasm.Parsing;
+    using System.Text;
+    using Irony.Parsing;
+    using Parser = Sasm.Parsing.Parser;
 
     class Program
     {
         static void Main(string[] args)
         {
             var parser = new Parser();
-            var lines = new List<string>();
+            var lines = new StringBuilder();
 
             string line = "lea bc, [hl+constant]";
             int lineNumber = 1;
-            while (line != ".")
+            while (true)
             {
                 Console.Write($"{lineNumber++} ");
                 line = Console.ReadLine();
-                lines.Add(line);
+                if (line == ".")
+                    break;
+                lines.AppendLine(line);
             }
-            var tree = parser.Parse(lines);
+            var tree = parser.Parse(lines.ToString());
 
-            Console.WriteLine($"Parsing done, took {tree.ParseTime.TotalMilliseconds} ms");
-            PrintParseTree(tree);
+            Console.WriteLine($"Parsing done, took {tree.ParseTimeMilliseconds} ms");
+            PrintParseTree(tree, lines.ToString().Split(parser.NewLine));
             Console.WriteLine();
         }
 
-        private static void PrintParseTree(ParseTree tree)
+        private static void PrintParseTree(ParseTree tree, string[] lines)
         {
-            if (tree.HasErrors)
-                PrintError(tree);
+            if (tree.HasErrors())
+                PrintError(tree, lines);
             else
                 PrintNode(tree.Root, 0);
         }
 
-        private static void PrintError(ParseTree tree)
+        private static void PrintError(ParseTree tree, string[] lines)
         {
             const string lineString = "in line {0}: ";
-            var errors = tree.Messages;
-            var lines = tree.SourceLines;
+            var errors = tree.ParserMessages.Where(e => e.Level == Irony.ErrorLevel.Error).ToList();
 
             if (errors.Count > 1)
                 Console.WriteLine($"Programm has {errors.Count} errors.");
@@ -49,9 +52,9 @@ namespace Sasm
 
             foreach (var e in errors)
             {
-                string formattedLine = string.Format(lineString, e.Source.lineNumber + 1);
-                var startOfMarker = e.Source.start + formattedLine.Length;
-                var markerLength = Math.Max(e.Source.length, 1);
+                string formattedLine = string.Format(lineString, e.Location.Line + 1);
+                var startOfMarker = e.Location.Column + formattedLine.Length;
+                var markerLength = Math.Max(1, 1);
 
                 var marker = string.Concat(
                     new string(' ', startOfMarker),
@@ -59,7 +62,10 @@ namespace Sasm
                 Console.WriteLine();
                 Console.WriteLine(e.Message);
                 Console.Write(formattedLine);
-                Console.WriteLine(lines[e.Source.lineNumber]);
+                if (e.Location.Line < lines.Length)
+                    Console.WriteLine(lines[e.Location.Line]);
+                else
+                    Console.WriteLine("???");
                 Console.WriteLine(marker);
             }
         }
@@ -69,14 +75,12 @@ namespace Sasm
             Console.Write(new string('|', currentIndentation));
             Console.Write('-');
 
-            string designator = currentNode.NodeType == ParseTreeNodeType.Terminal ?
-                currentNode.Token.TokenType.ToString() :
-                currentNode.NodeType.ToString();
+            string designator = currentNode.Term.Name;
 
             Console.WriteLine(designator);
-            if (currentNode.Children != null)
+            if (currentNode.ChildNodes != null)
             {
-                foreach (var c in currentNode.Children)
+                foreach (var c in currentNode.ChildNodes)
                     PrintNode(c, currentIndentation + 1);
             }
         }
