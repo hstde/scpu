@@ -61,7 +61,7 @@ namespace Sasm.Parsing
             this.Root = Start;
 
             //this.LanguageFlags = LanguageFlags.CreateAst;
-            //this.LanguageFlags |= LanguageFlags.NewLineBeforeEOF;
+            this.LanguageFlags |= LanguageFlags.NewLineBeforeEOF;
         }
 
         private void SetUpOperators()
@@ -78,12 +78,14 @@ namespace Sasm.Parsing
         {
             CreateNonTerminals();
 
-            Start.Rule = MakeStarRule(Start, NewLine, Line);
+            Start.Rule = MakeStarRule(Start, Line);
 
-            Line.Rule = (LabelDefinition + Instruction)
-                | LabelDefinition
-                | Instruction
-                | Empty;
+            Line.Rule = LabelDefinition + Instruction + NewLine
+                | LabelDefinition + NewLine
+                | Instruction + NewLine
+                | Empty + NewLine;
+
+            Line.ErrorRule = SyntaxError + NewLine;
 
             LabelDefinition.Rule = Ident + ":";
 
@@ -108,7 +110,7 @@ namespace Sasm.Parsing
 
             Constant.Rule = Literal
                 | BinExpr
-                | ("(" + Constant + ")");
+                | "(" + Constant + ")";
 
             Literal.Rule = Number | Ident | CharLiteral;
 
@@ -121,7 +123,7 @@ namespace Sasm.Parsing
             IndirectMemAccess.Rule = "[" + Register + "]";
 
             DisplacementMemAccess.Rule = "["
-                + ((Register + "+" + Constant) | (Constant + "+" + Register))
+                + (Register + "+" + Constant | Constant + "+" + Register)
                 + "]";
 
             OffsetMemAccess.Rule = "[" + Register + "+" + Register + "]";
