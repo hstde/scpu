@@ -6,6 +6,7 @@ namespace Sasm
     using System.Linq;
     using System.Text;
     using Irony.Parsing;
+    using Sasm.Ast;
     using Parser = Sasm.Parsing.Parser;
 
     class Program
@@ -28,7 +29,9 @@ namespace Sasm
             var tree = parser.Parse(lines.ToString());
 
             Console.WriteLine($"Parsing done, took {tree.ParseTimeMilliseconds} ms");
-            PrintParseTree(tree, lines.ToString().Split(parser.NewLine));
+            var start = tree.Root.AstNode as AstNode;
+            var context = EvaluationContext.CreateDefault();
+            //PrintParseTree(tree, lines.ToString().Split(parser.NewLine));
             Console.WriteLine();
         }
 

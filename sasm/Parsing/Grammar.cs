@@ -6,6 +6,7 @@ namespace Sasm.Parsing
     using System.Runtime.CompilerServices;
     using System.Security.Cryptography;
     using Irony.Parsing;
+    using Sasm.Ast;
 
     public class Grammar : Irony.Parsing.Grammar
     {
@@ -60,7 +61,7 @@ namespace Sasm.Parsing
 
             this.Root = Start;
 
-            //this.LanguageFlags = LanguageFlags.CreateAst;
+            this.LanguageFlags = LanguageFlags.CreateAst;
             this.LanguageFlags |= LanguageFlags.NewLineBeforeEOF;
         }
 
@@ -171,7 +172,7 @@ namespace Sasm.Parsing
 
         private void CreateNonTerminals()
         {
-            Start = new NonTerminal(nameof(Start));
+            Start = new NonTerminal(nameof(Start), typeof(FileNode));
             Line = new NonTerminal(nameof(Line));
             LabelDefinition = new NonTerminal(nameof(LabelDefinition));
             Instruction = new NonTerminal(nameof(Instruction));
@@ -195,8 +196,8 @@ namespace Sasm.Parsing
             IncludeDirective = new NonTerminal(nameof(IncludeDirective));
             TimesDirective = new NonTerminal(nameof(TimesDirective));
             DataDirective = new NonTerminal(nameof(DataDirective));
-            WarningDirective = new NonTerminal(nameof(WarningDirective));
-            ConstDirective = new NonTerminal(nameof(ConstDirective));
+            WarningDirective = new NonTerminal(nameof(WarningDirective), typeof(WarningNode));
+            ConstDirective = new NonTerminal(nameof(ConstDirective), typeof(ConstNode));
             DataDefinition = new NonTerminal(nameof(DataDefinition));
             DataConstantList = new NonTerminal(nameof(DataConstantList));
             DataConstant = new NonTerminal(nameof(DataConstant));
