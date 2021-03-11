@@ -20,11 +20,13 @@ namespace Sasm.Ast
         {
         }
 
-        public void AddChild(ParseTreeNode node)
+        public AstNode AddChild(ParseTreeNode node)
         {
             if (childNodes is null)
                 childNodes = new List<AstNode>();
-            childNodes.Add(node.AstNode as AstNode);
+            AstNode astNode = node.AstNode as AstNode;
+            childNodes.Add(astNode);
+            return astNode;
         }
 
         IEnumerable IBrowsableAstNode.GetChildNodes()

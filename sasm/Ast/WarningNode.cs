@@ -1,15 +1,20 @@
 namespace Sasm.Ast
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using Irony.Ast;
     using Irony.Parsing;
 
     public class WarningNode : AstNode
     {
+        public ConstantListNode ConstantList { get; private set; }
         public override object Evaluate(EvaluationContext context)
         {
-            foreach (var child in GetChildNodes())
+            var list = ConstantList.EvaluateAll(context);
+            foreach (var e in list)
             {
-                context.Out.Write(child.Evaluate(context));
+                context.Out.Write(e);
             }
 
             context.Out.WriteLine();
@@ -18,11 +23,8 @@ namespace Sasm.Ast
 
         public override void Init(AstContext context, ParseTreeNode parseNode)
         {
-            foreach (var child in parseNode.GetMappedChildNodes())
-            {
-                if (!(child.AstNode is null))
-                    AddChild(child);
-            }
+            var children = parseNode.GetMappedChildNodes();
+            ConstantList = AddChild(children[1]) as ConstantListNode;
         }
     }
 }

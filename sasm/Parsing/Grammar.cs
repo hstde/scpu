@@ -1,15 +1,25 @@
 namespace Sasm.Parsing
 {
     using System;
-    using System.Globalization;
     using System.Linq;
-    using System.Runtime.CompilerServices;
-    using System.Security.Cryptography;
+    using Irony.Ast;
     using Irony.Parsing;
     using Sasm.Ast;
+    using AstContext = Sasm.Ast.AstContext;
 
     public class Grammar : Irony.Parsing.Grammar
     {
+        private const string SegmentToken = ".segment";
+        private const string OriginToken = ".org";
+        private const string IncludeToken = ".include";
+        private const string TimesToken = ".times";
+        private const string DataByteToken = "db";
+        private const string DataWordToken = "dw";
+        private const string WarningToken = ".warning";
+        private const string ConstantToken = ".const";
+        private const string LabelDefinitionSuffix = ":";
+        private const string SeparatorToken = ",";
+
         public static Grammar Instance { get; } = new Grammar();
 
         public Terminal Comment { get; private set; }
@@ -51,13 +61,24 @@ namespace Sasm.Parsing
         public NonTerminal DataConstantList { get; private set; }
         public NonTerminal DataConstant { get; private set; }
 
-        private Grammar() : base(false)
+        public Grammar() : base(false)
         {
             SetUpTerminals();
 
             SetUpNonTerminals();
 
             SetUpOperators();
+
+            MarkPunctuation(SeparatorToken, "(", ")", LabelDefinitionSuffix);
+
+            MarkTransient(
+                Line,
+                Directive,
+                Instruction,
+                BinOp,
+                Constant,
+                DataConstant,
+                Literal);
 
             this.Root = Start;
 
@@ -81,22 +102,22 @@ namespace Sasm.Parsing
 
             Start.Rule = MakeStarRule(Start, Line);
 
-            Line.Rule = LabelDefinition + Instruction + NewLine
-                | LabelDefinition + NewLine
+            Line.Rule = //LabelDefinition + Instruction + NewLine
+                /*|*/ LabelDefinition + NewLine
                 | Instruction + NewLine
                 | Empty + NewLine;
 
             Line.ErrorRule = SyntaxError + NewLine;
 
-            LabelDefinition.Rule = Ident + ":";
+            LabelDefinition.Rule = Ident + LabelDefinitionSuffix;
 
-            Instruction.Rule = Directive | Operation;
+            Instruction.Rule = Directive; //| Operation;
 
             Operation.Rule = Op + OperandList;
 
             Op.Rule = Mnemonic | Ident;
 
-            Mnemonic.Rule = TerminalsFromEnum<Mnemonics>("opcode");
+            Mnemonic.Rule = TerminalsFromEnum<Mnemonics>();
 
             OperandList.Rule = MakeListRule(OperandList, Separator, Operand, TermListOptions.StarList);
 
@@ -107,7 +128,7 @@ namespace Sasm.Parsing
                 | DisplacementMemAccess
                 | OffsetMemAccess;
 
-            Register.Rule = TerminalsFromEnum<Registers>("register");
+            Register.Rule = TerminalsFromEnum<Registers>();
 
             Constant.Rule = Literal
                 | BinExpr
@@ -137,36 +158,36 @@ namespace Sasm.Parsing
                 | WarningDirective
                 | ConstDirective;
 
-            SegmentDirective.Rule = ToTerm(".segment") + Ident + (Constant | Empty);
+            SegmentDirective.Rule = ToTerm(SegmentToken) + Ident + (Constant | Empty);
 
-            OriginDirective.Rule = ToTerm(".org") + Constant;
+            OriginDirective.Rule = ToTerm(OriginToken) + Constant;
 
-            IncludeDirective.Rule = ToTerm(".include") + NormalString;
+            IncludeDirective.Rule = ToTerm(IncludeToken) + NormalString;
 
-            TimesDirective.Rule = ToTerm(".times") + Constant + (DataDirective | Operation);
+            TimesDirective.Rule = ToTerm(TimesToken) + Constant + (DataDirective | Operation);
 
             DataDirective.Rule = DataDefinition + DataConstantList;
 
-            DataDefinition.Rule = (ToTerm("db") | "dw");
+            DataDefinition.Rule = (ToTerm(DataByteToken) | DataWordToken);
 
             DataConstantList.Rule = MakeListRule(DataConstantList, Separator, DataConstant, TermListOptions.PlusList);
 
             DataConstant.Rule = Constant | NormalString | EscapedString;
 
-            WarningDirective.Rule = ToTerm(".warning") + DataConstantList;
+            WarningDirective.Rule = ToTerm(WarningToken) + DataConstantList;
 
-            ConstDirective.Rule = ToTerm(".const") + Ident + DataConstant;
+            ConstDirective.Rule = ToTerm(ConstantToken) + Ident + DataConstant;
 
             MarkReservedWords(
                 Enum.GetNames<Mnemonics>()
                     .Union(Enum.GetNames<Registers>())
-                    .Append(".segment")
-                    .Append(".org")
-                    .Append(".include")
-                    .Append(".times")
-                    .Append("db").Append("dw")
-                    .Append(".warning")
-                    .Append(".const")
+                    .Append(SegmentToken)
+                    .Append(OriginToken)
+                    .Append(IncludeToken)
+                    .Append(TimesToken)
+                    .Append(DataByteToken).Append(DataWordToken)
+                    .Append(WarningToken)
+                    .Append(ConstantToken)
                     .ToArray());
         }
 
@@ -183,7 +204,7 @@ namespace Sasm.Parsing
             Mnemonic = new NonTerminal(nameof(Mnemonic));
             Register = new NonTerminal(nameof(Register));
             Constant = new NonTerminal(nameof(Constant));
-            BinExpr = new NonTerminal(nameof(BinExpr));
+            BinExpr = new NonTerminal(nameof(BinExpr), typeof(BinaryOperationNode));
             Literal = new NonTerminal(nameof(Literal));
             BinOp = new NonTerminal(nameof(BinOp));
             AbsoluteMemAccess = new NonTerminal(nameof(AbsoluteMemAccess));
@@ -199,7 +220,7 @@ namespace Sasm.Parsing
             WarningDirective = new NonTerminal(nameof(WarningDirective), typeof(WarningNode));
             ConstDirective = new NonTerminal(nameof(ConstDirective), typeof(ConstNode));
             DataDefinition = new NonTerminal(nameof(DataDefinition));
-            DataConstantList = new NonTerminal(nameof(DataConstantList));
+            DataConstantList = new NonTerminal(nameof(DataConstantList), typeof(ConstantListNode));
             DataConstant = new NonTerminal(nameof(DataConstant));
         }
 
@@ -221,25 +242,36 @@ namespace Sasm.Parsing
             NormalString = new StringLiteral(nameof(NormalString), "\"", StringOptions.NoEscapes);
             EscapedString = new StringLiteral(nameof(EscapedString), "`", StringOptions.AllowsAllEscapes);
             CharLiteral = new StringLiteral(nameof(CharLiteral), "'", StringOptions.IsChar | StringOptions.AllowsAllEscapes);
-            Separator = ToTerm(",", nameof(Separator));
+            Separator = ToTerm(SeparatorToken, nameof(Separator));
         }
 
-        private BnfExpression TerminalsFromEnum<TEnum>(string groupName)
+        private BnfExpression TerminalsFromEnum<TEnum>(string groupName = null)
             where TEnum : struct, Enum
         {
             BnfExpression expr = null;
 
             var names = Enum.GetNames<TEnum>();
 
+            KeyTerm toTerm(string name) => groupName is null ? ToTerm(name) : ToTerm(name, groupName);
+
             foreach (var name in names)
             {
                 if (expr is null)
-                    expr = ToTerm(name, groupName);
+                    expr = toTerm(name);
                 else
-                    expr |= ToTerm(name, groupName);
+                    expr |= toTerm(name);
             }
 
             return expr;
+        }
+
+        public override void BuildAst(LanguageData language, ParseTree parseTree)
+        {
+            if(parseTree.HasErrors())
+                throw new Exception("parse tree has errors. cannot build ast");
+            var context = new AstContext(parseTree.FileName, language);
+            var builder = new AstBuilder(context);
+            builder.BuildAst(parseTree);
         }
     }
 }

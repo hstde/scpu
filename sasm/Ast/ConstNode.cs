@@ -18,7 +18,8 @@ namespace Sasm.Ast
         public override void Init(AstContext context, ParseTreeNode parseNode)
         {
             var children = parseNode.GetMappedChildNodes();
-
+            Target = AddChild(children[1]) as IdentNode;
+            Value = AddChild(children[2]);
         }
     }
 }
