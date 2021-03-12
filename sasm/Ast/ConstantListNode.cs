@@ -6,6 +6,11 @@ namespace Sasm.Ast
 
     public class ConstantListNode : AstNode
     {
+        public override void Assemble(AssemblyContext context)
+        {
+            throw new System.NotImplementedException();
+        }
+
         public override object Evaluate(EvaluationContext context)
         {
             return EvaluateAll(context);

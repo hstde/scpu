@@ -9,6 +9,11 @@ namespace Sasm.Ast
         public AstNode Rhs { get; private set; }
         public string Operation { get; private set; }
 
+        public override void Assemble(AssemblyContext context)
+        {
+            throw new System.NotImplementedException();
+        }
+
         public override object Evaluate(EvaluationContext context)
         {
             return null;

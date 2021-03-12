@@ -9,6 +9,12 @@ namespace Sasm.Ast
     public class WarningNode : AstNode
     {
         public ConstantListNode ConstantList { get; private set; }
+
+        public override void Assemble(AssemblyContext context)
+        {
+            throw new NotImplementedException();
+        }
+
         public override object Evaluate(EvaluationContext context)
         {
             var list = ConstantList.EvaluateAll(context);

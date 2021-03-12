@@ -1,11 +1,10 @@
 namespace Sasm.Ast
 {
+    using Irony.Ast;
     using Irony.Parsing;
 
-    public class LiteralNode : AstNode
+    public class LabledInstructionNode : AstNode
     {
-        public object Value { get; private set; }
-
         public override void Assemble(AssemblyContext context)
         {
             throw new System.NotImplementedException();
@@ -13,12 +12,13 @@ namespace Sasm.Ast
 
         public override object Evaluate(EvaluationContext context)
         {
-            return Value;
+            throw new System.NotImplementedException();
         }
 
         public override void Init(AstContext context, ParseTreeNode parseNode)
         {
-            Value = parseNode.Token.Value;
+            foreach(var child in parseNode.GetMappedChildNodes())
+                AddChild(child);
         }
     }
 }

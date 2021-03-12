@@ -2,6 +2,7 @@ namespace Sasm.Parsing
 {
     using System;
     using System.Linq;
+    using System.Reflection;
     using Irony.Ast;
     using Irony.Parsing;
     using Sasm.Ast;
@@ -20,8 +21,6 @@ namespace Sasm.Parsing
         private const string LabelDefinitionSuffix = ":";
         private const string SeparatorToken = ",";
 
-        public static Grammar Instance { get; } = new Grammar();
-
         public Terminal Comment { get; private set; }
         public Terminal Ident { get; private set; }
         public Terminal Number { get; private set; }
@@ -31,11 +30,13 @@ namespace Sasm.Parsing
         public Terminal Separator { get; private set; }
 
         public NonTerminal Start { get; private set; }
-        public NonTerminal Line { get; private set; }
+        public NonTerminal LabledInstruction { get; private set; }
         public NonTerminal Instruction { get; private set; }
         public NonTerminal LabelDefinition { get; private set; }
         public NonTerminal Operation { get; private set; }
         public NonTerminal Op { get; private set; }
+        public NonTerminal AssemblerOp { get; private set; }
+        public NonTerminal MacroOp { get; private set; }
         public NonTerminal OperandList { get; private set; }
         public NonTerminal Operand { get; private set; }
         public NonTerminal Mnemonic { get; private set; }
@@ -72,13 +73,25 @@ namespace Sasm.Parsing
             MarkPunctuation(SeparatorToken, "(", ")", LabelDefinitionSuffix);
 
             MarkTransient(
-                Line,
                 Directive,
                 Instruction,
                 BinOp,
                 Constant,
                 DataConstant,
                 Literal);
+
+            AddTermsReportGroup("mnemonic", Enum.GetNames<Mnemonics>());
+            AddTermsReportGroup("register", Enum.GetNames<Registers>());
+            AddTermsReportGroup(
+                "directive",
+                SegmentToken,
+                OriginToken,
+                IncludeToken,
+                TimesToken,
+                DataByteToken,
+                DataWordToken,
+                WarningToken,
+                ConstantToken);
 
             this.Root = Start;
 
@@ -100,22 +113,24 @@ namespace Sasm.Parsing
         {
             CreateNonTerminals();
 
-            Start.Rule = MakeStarRule(Start, Line);
+            Start.Rule = MakeStarRule(Start, LabledInstruction);
 
-            Line.Rule = //LabelDefinition + Instruction + NewLine
-                /*|*/ LabelDefinition + NewLine
+            LabledInstruction.Rule = LabelDefinition + Instruction + NewLine
+                | LabelDefinition + NewLine
                 | Instruction + NewLine
                 | Empty + NewLine;
 
-            Line.ErrorRule = SyntaxError + NewLine;
+            LabledInstruction.ErrorRule = SyntaxError + NewLine;
 
             LabelDefinition.Rule = Ident + LabelDefinitionSuffix;
 
-            Instruction.Rule = Directive; //| Operation;
+            Instruction.Rule = Directive | Operation;
 
-            Operation.Rule = Op + OperandList;
+            Operation.Rule = AssemblerOp | MacroOp;
 
-            Op.Rule = Mnemonic | Ident;
+            AssemblerOp.Rule = Mnemonic + OperandList;
+
+            MacroOp.Rule = Ident + OperandList;
 
             Mnemonic.Rule = TerminalsFromEnum<Mnemonics>();
 
@@ -194,11 +209,12 @@ namespace Sasm.Parsing
         private void CreateNonTerminals()
         {
             Start = new NonTerminal(nameof(Start), typeof(FileNode));
-            Line = new NonTerminal(nameof(Line));
-            LabelDefinition = new NonTerminal(nameof(LabelDefinition));
+            LabledInstruction = new NonTerminal(nameof(LabledInstruction), typeof(LabledInstructionNode));
+            LabelDefinition = new NonTerminal(nameof(LabelDefinition), typeof(LabelDefinitionNode));
             Instruction = new NonTerminal(nameof(Instruction));
             Operation = new NonTerminal(nameof(Operation));
-            Op = new NonTerminal(nameof(Op));
+            AssemblerOp = new NonTerminal(nameof(AssemblerOp));
+            MacroOp = new NonTerminal(nameof(MacroOp));
             OperandList = new NonTerminal(nameof(OperandList));
             Operand = new NonTerminal(nameof(Operand));
             Mnemonic = new NonTerminal(nameof(Mnemonic));
@@ -267,7 +283,7 @@ namespace Sasm.Parsing
 
         public override void BuildAst(LanguageData language, ParseTree parseTree)
         {
-            if(parseTree.HasErrors())
+            if (parseTree.HasErrors())
                 throw new Exception("parse tree has errors. cannot build ast");
             var context = new AstContext(parseTree.FileName, language);
             var builder = new AstBuilder(context);

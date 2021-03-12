@@ -3,10 +3,9 @@ namespace Sasm.Ast
     using Irony.Ast;
     using Irony.Parsing;
 
-    public class ConstNode : AstNode
+    public class LabelDefinitionNode : AstNode
     {
-        public IdentNode Target { get; private set; }
-        public AstNode Value { get; private set; }
+        public IdentNode Label { get; private set; }
 
         public override void Assemble(AssemblyContext context)
         {
@@ -15,16 +14,15 @@ namespace Sasm.Ast
 
         public override object Evaluate(EvaluationContext context)
         {
-            var value = Value.Evaluate(context);
-            Target.SetValue(context, value);
-            return value;
+            throw new System.NotImplementedException();
         }
 
         public override void Init(AstContext context, ParseTreeNode parseNode)
         {
             var children = parseNode.GetMappedChildNodes();
-            Target = AddChild(children[1]) as IdentNode;
-            Value = AddChild(children[2]);
+            Label = AddChild(children[0]) as IdentNode;
+            if(Label is null)
+                throw new System.Exception("Expected child to be an ident!");
         }
     }
 }

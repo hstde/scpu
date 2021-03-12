@@ -11,7 +11,7 @@ namespace Sasm.Test.Parsing
 
     public static class ParserTests
     {
-        private static Grammar G = Grammar.Instance;
+        private static Grammar G = new Grammar();
         public static IEnumerable<TestCaseData> NoErrorCases
         {
             get
@@ -21,7 +21,7 @@ namespace Sasm.Test.Parsing
                     var startNode = new TestNode(G.Start);
                     if ((nodes.Any()))
                     {
-                        var line = new TestNode(G.Line);
+                        var line = new TestNode(G.LabledInstruction);
                         line.children.AddRange(nodes);
                         startNode.children.Add(line);
                     }
@@ -228,11 +228,11 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("ld"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register"))),
+                                        new TestNode("a"))),
                                 Node(G.Operand,
                                     Node(G.Constant,
                                         Node(G.Literal,
@@ -247,16 +247,16 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("ld"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register"))),
+                                        new TestNode("a"))),
                                 Node(G.Operand,
                                     Node(G.IndirectMemAccess,
                                         new TestNode("["),
                                         Node(G.Register,
-                                            new TestNode("register")),
+                                            new TestNode("de")),
                                         new TestNode("]")))))));
                 yield return CreateCaseSingleLine(
                     "ld [ix+1], b",
@@ -265,14 +265,14 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("ld"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.DisplacementMemAccess,
                                         new TestNode("["),
                                         NodeS("Unnamed2",
                                             Node(G.Register,
-                                                new TestNode("register")),
+                                                new TestNode("ix")),
                                             new TestNode("+"),
                                             Node(G.Constant,
                                                 Node(G.Literal,
@@ -280,7 +280,7 @@ namespace Sasm.Test.Parsing
                                         new TestNode("]"))),
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register")))))));
+                                        new TestNode("b")))))));
                 yield return CreateCaseSingleLine(
                     "lea ix, [iy+hl]",
                     "load effective address to ix of iy offset hl",
@@ -288,19 +288,19 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("lea"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register"))),
+                                        new TestNode("ix"))),
                                 Node(G.Operand,
                                     Node(G.OffsetMemAccess,
                                         new TestNode("["),
                                         Node(G.Register,
-                                            new TestNode("register")),
+                                            new TestNode("iy")),
                                         new TestNode("+"),
                                         Node(G.Register,
-                                            new TestNode("register")),
+                                            new TestNode("hl")),
                                         new TestNode("]")))))));
                 yield return CreateCaseSingleLine(
                     "label:",
@@ -327,11 +327,11 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("inc"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register")))))));
+                                        new TestNode("a")))))));
                 yield return CreateCaseSingleLine(
                     "label: inc a ; increment a",
                     "label with mnemonic and argument and comment",
@@ -342,11 +342,11 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("inc"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register")))))));
+                                        new TestNode("a")))))));
                 yield return CreateCaseSingleLine(
                     "mov a, b ; copy b into a",
                     "mnemonic with two arguments and comment",
@@ -354,14 +354,14 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("mov"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register"))),
+                                        new TestNode("a"))),
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register")))))));
+                                        new TestNode("b")))))));
                 yield return CreateCaseSingleLine(
                     "ld [1], a",
                     "load absolute with register",
@@ -369,7 +369,7 @@ namespace Sasm.Test.Parsing
                         Node(G.Operation,
                             Node(G.Op,
                                 Node(G.Mnemonic,
-                                    new TestNode("opcode"))),
+                                    new TestNode("ld"))),
                             Node(G.OperandList,
                                 Node(G.Operand,
                                     Node(G.AbsoluteMemAccess,
@@ -380,7 +380,7 @@ namespace Sasm.Test.Parsing
                                         new TestNode("]"))),
                                 Node(G.Operand,
                                     Node(G.Register,
-                                        new TestNode("register")))))));
+                                        new TestNode("a")))))));
                 yield return CreateCaseSingleLine(
                     ".include \"test.inc\"",
                     "include",
@@ -439,7 +439,7 @@ namespace Sasm.Test.Parsing
                                     Node(G.Operation,
                                         Node(G.Op,
                                             Node(G.Mnemonic,
-                                                NodeS("opcode"))),
+                                                NodeS("not"))),
                                         Node(G.OperandList)))))));
             }
         }

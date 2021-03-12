@@ -29,6 +29,7 @@ namespace Sasm
             var tree = parser.Parse(lines.ToString());
 
             Console.WriteLine($"Parsing done, took {tree.ParseTimeMilliseconds} ms");
+            parser.BuildAst(tree);
             var start = tree.Root.AstNode as AstNode;
             var context = EvaluationContext.CreateDefault();
             start.Evaluate(context);

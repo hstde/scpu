@@ -6,17 +6,22 @@ namespace Sasm.Parsing
 
     public class Parser
     {
-        public char[] NewLine { get; }
+        private readonly Grammar grammar;
+        private readonly LanguageData languageData;
         private readonly Irony.Parsing.Parser internalParser;
 
         public Parser(NonTerminal startTerm)
         {
-            internalParser = new Irony.Parsing.Parser(new LanguageData(Grammar.Instance), startTerm);
-            NewLine = internalParser.Language.Grammar.NewLine.LineTerminators.ToCharArray();
+            grammar = new Grammar();
+            languageData = new LanguageData(grammar);
+            internalParser = new Irony.Parsing.Parser(languageData, startTerm);
         }
 
-        public Parser() : this(Grammar.Instance.Root)
+        public Parser()
         {
+            grammar = new Grammar();
+            languageData = new LanguageData(grammar);
+            internalParser = new Irony.Parsing.Parser(languageData);
         }
 
         public ParseTree Parse(string source)
@@ -29,6 +34,10 @@ namespace Sasm.Parsing
             return internalParser.Parse(source, fileName);
         }
 
+        public void BuildAst(ParseTree tree)
+        {
+            grammar.BuildAst(languageData, tree);
+        }
 
     }
 }

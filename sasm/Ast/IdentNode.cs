@@ -20,5 +20,10 @@ namespace Sasm.Ast
         {
             Ident = parseNode.Token.ValueString;
         }
+
+        public override void Assemble(AssemblyContext context)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

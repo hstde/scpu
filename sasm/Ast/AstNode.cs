@@ -4,6 +4,7 @@ namespace Sasm.Ast
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Runtime.Loader;
     using Irony.Ast;
     using Irony.Parsing;
 
@@ -53,5 +54,7 @@ namespace Sasm.Ast
         public abstract void Init(AstContext context, ParseTreeNode parseNode);
 
         public abstract object Evaluate(EvaluationContext context);
+
+        public abstract void Assemble(AssemblyContext context);
     }
 }
