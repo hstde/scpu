@@ -55,7 +55,7 @@
 			"patterns": [
 				{
 					"name": "entity.name.function.sasm",
-					"match": "(?i)(?<![\\w\\d])(\\.(segment|org|include|times|warning|const)|(db|dw))(?!\\S)"
+					"match": "(?i)(?<![\\w\\d])(\\.(segment|org|include|times|warning|const|macro)|(db|dw))(?!\\S)"
 				}
 			]
 		},

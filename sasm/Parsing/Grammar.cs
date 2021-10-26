@@ -18,6 +18,7 @@ namespace Sasm.Parsing
         private const string DataWordToken = "dw";
         private const string WarningToken = ".warning";
         private const string ConstantToken = ".const";
+        private const string MacroToken = ".macro";
         private const string LabelDefinitionSuffix = ":";
         private const string SeparatorToken = ",";
 
@@ -61,6 +62,9 @@ namespace Sasm.Parsing
         public NonTerminal DataDefinition { get; private set; }
         public NonTerminal DataConstantList { get; private set; }
         public NonTerminal DataConstant { get; private set; }
+        public NonTerminal MacroDefinition { get; private set; }
+        public NonTerminal IdentList { get; private set; }
+        public NonTerminal Block { get; private set; }
 
         public Grammar() : base(false)
         {
@@ -103,6 +107,7 @@ namespace Sasm.Parsing
         {
             RegisterBracePair("(", ")");
             RegisterBracePair("[", "]");
+            RegisterBracePair("{", "}");
 
             RegisterOperators(25, "<<", ">>");
             RegisterOperators(30, "+", "-");
@@ -193,6 +198,12 @@ namespace Sasm.Parsing
 
             ConstDirective.Rule = ToTerm(ConstantToken) + Ident + DataConstant;
 
+            IdentList.Rule = MakeListRule(IdentList, Separator, Ident, TermListOptions.PlusList);
+
+            Block.Rule = ToTerm("{") + Start + "}";
+
+            MacroDefinition.Rule = ToTerm(MacroToken) + Ident + "(" + IdentList.Q() + ")" + Block;
+
             MarkReservedWords(
                 Enum.GetNames<Mnemonics>()
                     .Union(Enum.GetNames<Registers>())
@@ -203,6 +214,7 @@ namespace Sasm.Parsing
                     .Append(DataByteToken).Append(DataWordToken)
                     .Append(WarningToken)
                     .Append(ConstantToken)
+                    .Append(MacroToken)
                     .ToArray());
         }
 
@@ -238,6 +250,9 @@ namespace Sasm.Parsing
             DataDefinition = new NonTerminal(nameof(DataDefinition));
             DataConstantList = new NonTerminal(nameof(DataConstantList), typeof(ConstantListNode));
             DataConstant = new NonTerminal(nameof(DataConstant));
+            MacroDefinition = new NonTerminal(nameof(MacroDefinition));
+            IdentList = new NonTerminal(nameof(IdentList));
+            Block = new NonTerminal(nameof(Block));
         }
 
         private void SetUpTerminals()

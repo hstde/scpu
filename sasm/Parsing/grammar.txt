@@ -50,6 +50,7 @@ directive = times
 directive = data
 directive = warning
 directive = const
+directive = macro
 
 segment = Segment Identifier constant?
 
@@ -67,3 +68,9 @@ dataConstant = String
 warning = Warning dataConstant (Separator dataConstant)*
 
 const = ConstantDef Identifier dataConstant
+
+macro = MacroDef Identifier '(' identList? ')' block
+
+identList = Identifier (Separator Identifier)*
+
+block = '{' start '}'

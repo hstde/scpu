@@ -21,6 +21,9 @@ toHex:
     ld [hl+2], bc
     pop lr
     ret
+
+; converts a number in d to two hex characters
+; and puts them on the stack in lsb order (lsb is pushed first)
 .conv8:
     ld hl, numberCharacters
     mov a, d
