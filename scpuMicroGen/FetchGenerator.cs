@@ -1,5 +1,6 @@
 namespace ScpuMicroGen
 {
+    using Sasm.CodeGeneration;
     using static ScpuMicroGen.ControlLines;
     using static ScpuMicroGen.ControlLines2;
 
@@ -55,7 +56,7 @@ namespace ScpuMicroGen
                         (HBus2RegSelPCh | Imm2DBus | DBus2HBus).SetImmediate(0),
                         (LBus2RegSelPCl | Imm2DBus | DBus2LBus).SetImmediate(0),
                         // Execute a NOP to get into the normal fetch phase
-                        (Imm2DBus | TogglePhase).SetImmediate((byte) Opcodes.NOP),
+                        (Imm2DBus | TogglePhase).SetImmediate((byte)OpCodeValues.NOP),
                     },
                     new ControlLines2[]
                     {

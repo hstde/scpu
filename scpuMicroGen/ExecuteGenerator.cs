@@ -1,12 +1,12 @@
 namespace ScpuMicroGen
 {
     using System;
+    using Sasm.CodeGeneration;
     using static ScpuMicroGen.ControlLines;
     using static ScpuMicroGen.ControlLines2;
-    using static ScpuMicroGen.Opcodes;
-    using static ScpuMicroGen.ExtOpcodes;
-    using static ScpuMicroGen.ExecuteGenerator.HLBusReg8;
     using static ScpuMicroGen.ExecuteGenerator.HLBusReg16;
+    using static ScpuMicroGen.ExecuteGenerator.HLBusReg8;
+    using static Sasm.CodeGeneration.OpCodeValues;
 
     public static partial class ExecuteGenerator
     {
@@ -55,12 +55,12 @@ namespace ScpuMicroGen
                 return ExtInst();
 
             if (!flags.HasFlag(Flags.ExtendedInstructions))
-                return GenerateNormalSet(flags, (Opcodes)op);
+                return GenerateNormalSet(flags, (OpCodeValues)op);
             else
-                return GenerateExtendedSet(flags, (ExtOpcodes)op);
+                return GenerateExtendedSet(flags, (OpCodeValues)(0xFF00 | op));
         }
 
-        static (ControlLines[], ControlLines2[]) GenerateNormalSet(Flags flags, Opcodes op)
+        static (ControlLines[], ControlLines2[]) GenerateNormalSet(Flags flags, OpCodeValues op)
         {
             switch (op)
             {
@@ -122,6 +122,11 @@ namespace ScpuMicroGen
                 case LD_A_IND_SP:
                     return LdAInd(SP);
 
+                /*case JL_IMM16:
+                    return JlImm16();
+                case JL_HL:
+                    return JlReg16(HL);*/
+
                 case NOP:
                 default:
                     return Nop();
@@ -129,7 +134,7 @@ namespace ScpuMicroGen
             }
         }
 
-        static (ControlLines[], ControlLines2[]) GenerateExtendedSet(Flags flags, ExtOpcodes op)
+        static (ControlLines[], ControlLines2[]) GenerateExtendedSet(Flags flags, OpCodeValues op)
         {
             switch (op)
             {
@@ -174,13 +179,12 @@ namespace ScpuMicroGen
             // and basically do a normal fetch
             return (new ControlLines[]
                 {
-                    // PC -> ABuf, PC -> ACBA
                     // Set ext instruction flag
                     // PC -> ABuf, PC -> ACBA
-                    (Reg2LBusSelPCl | Reg2HBusSelPCh | ABufLoad | ACBALoad),
+                    (ReadReg16(PC) | ABufLoad | ACBALoad),
                     // ACBA + 1 -> HLBus, HLBus -> PC
                     // D -> IR
-                    (ACOpInc | ACRes2HLBus | HBus2RegSelPCh | LBus2RegSelPCl
+                    (ACOpInc | ACRes2HLBus | WriteReg16(PC)
                         | BusEnablePin | Write_ReadPinRead | DBuf2DBus
                         | TogglePhase)
                 },
@@ -226,13 +230,15 @@ namespace ScpuMicroGen
                 });
         }
 
-        static (ControlLines[], ControlLines2[]) PCIncInc()
+        static (ControlLines[], ControlLines2[]) PcSkipImm16()
         {
             return (new[]
                 {
+                    // funny thing is, because the hl bus is blocked by PC
+                    // we must have at least 3 cycles, because we can't load the constant 2 from the immediate field
                     // ADD PC, 2
                     // PC -> ACBA
-                    (Reg2LBusSelPCl | Reg2HBusSelPCh | ACBALoad),
+                    (ReadReg16(PC) | ACBALoad),
                     // ACBA + 1 -> ACBA
                     (ACOpInc | ACRes2ACB | ACBALoad),
                     // ACBA + 1 -> PC
@@ -246,5 +252,44 @@ namespace ScpuMicroGen
                         ControlLines2.None,
                 });
         }
+
+        private static (ControlLines[], ControlLines2[]) JlImm16()
+        {
+            // pc->acba, pc->aout
+            // read, d->w, ainc, ACRes->acab, ACRes->aout
+            // read, d->dbuf, ainc, ACRes->LR,
+            // dbuf->PCl, W->PCh
+            return (new ControlLines[]
+            {
+                (ReadReg16(PC) | ACBALoad | ABufLoad),
+                (ACOpInc | ACRes2ACB | ACBALoad | ABufLoad
+                    | BusEnablePin | Write_ReadPinRead | DBus2Reg8(W) | DBuf2DBus),
+                (ACOpInc)
+            },
+            new ControlLines2[]
+            {
+
+            });
+        }
+
+        private static (ControlLines[], ControlLines2[]) JlReg16(HLBusReg16 reg)
+        {
+            // pc ->lr
+            // hl->pc
+            throw new NotImplementedException();
+        }
+        // ret
+        // lr -> pc
+        // 
+        // push af
+        // sp -> acba, sp -> aout
+        // write, f -> D, ainc, ACRes -> acab, ACres -> aout
+        // write, a -> D, ainc, ACRes -> SP
+        // 
+        // pop af
+        // sp -> acba
+        // adec, ACRes -> acab, ACRes -> aout
+        // read, D -> a, adec, ACRes -> SP, ACres -> aout
+        // read, D -> f
     }
 }

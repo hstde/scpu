@@ -1,0 +1,25 @@
+{
+    "name": "scpu-assembly",
+    "displayName": "scpu assembly",
+    "description": "language support for sasm assembly files",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.53.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "sasm",
+            "aliases": ["sasm", "sasm"],
+            "extensions": [".asm"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "sasm",
+            "scopeName": "source.sasm",
+            "path": "./syntaxes/sasm.tmLanguage.json"
+        }]
+    }
+}

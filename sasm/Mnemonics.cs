@@ -1,6 +1,6 @@
 namespace Sasm
 {
-    public enum Mnemonic
+    public enum Mnemonics
     {
         NOP,
         LD,
@@ -34,7 +34,9 @@ namespace Sasm
         CIF,
         J,
         JZ,
+        JE,
         JNZ,
+        JNE,
         JC,
         JNC,
         JS,

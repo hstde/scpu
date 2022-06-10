@@ -3,8 +3,6 @@ namespace ScpuMicroGen
     using System;
     using static ScpuMicroGen.ControlLines;
     using static ScpuMicroGen.ControlLines2;
-    using static ScpuMicroGen.Opcodes;
-    using static ScpuMicroGen.ExtOpcodes;
     using static ScpuMicroGen.ExecuteGenerator.HLBusReg8;
     using static ScpuMicroGen.ExecuteGenerator.HLBusReg16;
 

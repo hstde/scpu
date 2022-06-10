@@ -15,6 +15,19 @@
             "group": "build"
         },
         {
+            "label": "test sasm",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "test",
+                "${workspaceFolder}/sasm.Test/sasm.Test.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "test"
+        },
+        {
             "label": "run sasm",
             "command": "dotnet",
             "type": "process",
@@ -38,10 +51,19 @@
                 "--output=controlroms"
             ],
             "problemMatcher": "$msCompile",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "group": "none"
+        },
+        {
+            "label": "build micro code gen",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "--project",
+                "${workspaceFolder}/scpuMicroGen/ScpuMicroGen.csproj"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
         }
     ]
 }

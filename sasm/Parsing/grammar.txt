@@ -1,0 +1,76 @@
+start = line*
+
+line = LabelDef? instruction? Comment? Eol
+
+instruction = operation
+instruction = directive
+
+operation = op
+operation = op operand
+operation = op operand Separator operand
+
+op = Mnemonic
+op = Identifier
+
+operand = registerAlias
+operand = constant
+operand = absolute
+operand = indirect
+operand = displacement
+operand = offset
+
+registerAlias = Register
+registerAlias = Identifier
+
+constant = literal
+constant = constExpr
+
+literal = Number
+literal = Identifier
+literal = Char
+
+constExpr = addTerm (AddOp addTerm)?
+addTerm = mulTerm (MulOp mulTerm)?
+mulTerm = literal
+mulTerm = LParen constExpr RParen
+
+absolute = LBracket constant RBracket
+
+indirect = LBracket registerAlias RBracket
+
+displacement = LBracket registerAlias AddOp constant RBracket
+displacement = LBracket constant AddOp(+) registerAlias RBracket
+
+offset = LBracket registerAlias operator registerAlias RBracket
+
+directive = segment
+directive = origin
+directive = include
+directive = times
+directive = data
+directive = warning
+directive = const
+directive = macro
+
+segment = Segment Identifier constant?
+
+origin = Origin constant
+
+include = Include String
+
+times = Times constant data
+
+data = DataDefinition dataConstant (Separator dataConstant)*
+
+dataConstant = constant
+dataConstant = String
+
+warning = Warning dataConstant (Separator dataConstant)*
+
+const = ConstantDef Identifier dataConstant
+
+macro = MacroDef Identifier '(' identList? ')' block
+
+identList = Identifier (Separator Identifier)*
+
+block = '{' start '}'
